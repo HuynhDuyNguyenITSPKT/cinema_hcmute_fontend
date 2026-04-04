@@ -69,6 +69,30 @@ function formatDateTime(isoDateTime) {
   return date.toLocaleString('vi-VN')
 }
 
+function normalizeIsActive(value) {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value === 1
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+
+    if (normalized === 'true' || normalized === '1') {
+      return true
+    }
+
+    if (normalized === 'false' || normalized === '0') {
+      return false
+    }
+  }
+
+  return false
+}
+
 function AdminPromotions() {
   const [loading, setLoading] = useState(false)
   const [pageData, setPageData] = useState({
@@ -104,7 +128,10 @@ function AdminPromotions() {
       const data = response?.data || {}
 
       setPageData({
-        currentItems: data.currentItems || [],
+        currentItems: (data.currentItems || []).map((item) => ({
+          ...item,
+          isActive: normalizeIsActive(item?.isActive),
+        })),
         currentPage: data.currentPage || 0,
         totalPages: data.totalPages || 0,
         totalItems: data.totalItems || 0,
@@ -202,7 +229,7 @@ function AdminPromotions() {
       endDate: endIso,
       code: form.code.trim(),
       quantity: Number(form.quantity),
-      isActive: Boolean(form.isActive),
+      isActive: normalizeIsActive(form.isActive),
       imageUrl: form.imageUrl.trim() || undefined,
     }
 
@@ -268,7 +295,16 @@ function AdminPromotions() {
 
     try {
       const response = await promotionService.getById(id)
-      setSelectedDetail(response?.data || null)
+      const detail = response?.data
+
+      setSelectedDetail(
+        detail
+          ? {
+            ...detail,
+            isActive: normalizeIsActive(detail?.isActive),
+          }
+          : null
+      )
     } catch (err) {
       notifyError(err?.message || 'Không thể lấy chi tiết promotion.')
     } finally {
@@ -292,7 +328,10 @@ function AdminPromotions() {
       }
 
       setEditingId(id)
-      setSelectedDetail(data)
+      setSelectedDetail({
+        ...data,
+        isActive: normalizeIsActive(data?.isActive),
+      })
       setForm({
         name: data.name || '',
         description: data.description || '',
@@ -305,7 +344,7 @@ function AdminPromotions() {
         endDate: toLocalDateTimeInput(data.endDate),
         code: data.code || '',
         quantity: Number(data.quantity) || 0,
-        isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+        isActive: normalizeIsActive(data?.isActive),
         imageUrl: data.imageUrl || '',
       })
       setFormErrors({})
@@ -418,8 +457,8 @@ function AdminPromotions() {
                       <td>{formatDateTime(item.startDate)}</td>
                       <td>{formatDateTime(item.endDate)}</td>
                       <td>
-                        <span className={`badge ${item.isActive ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                          {item.isActive ? 'true' : 'false'}
+                        <span className={`badge ${normalizeIsActive(item.isActive) ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                          {normalizeIsActive(item.isActive) ? 'true' : 'false'}
                         </span>
                       </td>
                       <td className="text-end">
@@ -684,7 +723,7 @@ function AdminPromotions() {
                   <div><strong>Quantity:</strong> {Number(selectedDetail.quantity || 0).toLocaleString('vi-VN')}</div>
                   <div><strong>Start:</strong> {formatDateTime(selectedDetail.startDate)}</div>
                   <div><strong>End:</strong> {formatDateTime(selectedDetail.endDate)}</div>
-                  <div><strong>isActive:</strong> {selectedDetail.isActive ? 'true' : 'false'}</div>
+                  <div><strong>isActive:</strong> {normalizeIsActive(selectedDetail.isActive) ? 'true' : 'false'}</div>
                   <div><strong>Description:</strong> {selectedDetail.description || '-'}</div>
                   {selectedDetail.imageUrl ? (
                     <img
