@@ -14,6 +14,7 @@ import Home from '../pages/Home'
 import UserProfile from '../pages/UserProfile'
 import ForgotPassword from '../pages/ForgotPassword'
 import OAuth2Callback from '../pages/OAuth2Callback'
+import PaymentCallback from '../pages/PaymentCallback'
 import RoleBasedRedirect from './RoleBasedRedirect'
 
 function AppRouter() {
@@ -28,6 +29,7 @@ function AppRouter() {
 
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/callpay" element={<PaymentCallback />} />
       </Route>
 
       <Route

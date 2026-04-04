@@ -493,6 +493,182 @@
   animation: toast-slide-in 0.18s ease-out;
 }
 
+.payment-callback-page {
+  position: relative;
+  min-height: min(78vh, 760px);
+  display: grid;
+  place-items: center;
+  padding: 26px;
+  overflow: hidden;
+}
+
+.payment-callback-glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  border-radius: 999px;
+  filter: blur(18px);
+  opacity: 0.55;
+  z-index: 0;
+}
+
+.payment-callback-glow-left {
+  left: -120px;
+  top: -85px;
+  background: radial-gradient(circle, rgba(242, 106, 47, 0.45) 0%, rgba(242, 106, 47, 0) 70%);
+}
+
+.payment-callback-glow-right {
+  right: -130px;
+  bottom: -100px;
+  background: radial-gradient(circle, rgba(67, 119, 255, 0.28) 0%, rgba(67, 119, 255, 0) 72%);
+}
+
+.payment-callback-card {
+  width: min(760px, 100%);
+  position: relative;
+  z-index: 1;
+  border-radius: 28px;
+  border: 1px solid #d8e2f0;
+  background: linear-gradient(145deg, #ffffff 0%, #f7fbff 52%, #fff3eb 100%);
+  box-shadow: 0 28px 58px rgba(22, 42, 74, 0.14);
+  padding: clamp(22px, 3.4vw, 34px);
+  display: grid;
+  gap: 20px;
+  animation: payment-card-rise 420ms ease-out;
+}
+
+.payment-callback-head {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-callback-kicker {
+  margin: 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.payment-callback-head h1 {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.15;
+}
+
+.payment-callback-result {
+  margin: 0;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.payment-callback-result.success {
+  background: #e5f8ec;
+  color: #155a2e;
+  border: 1px solid #b8e5c8;
+}
+
+.payment-callback-result.danger {
+  background: #ffeceb;
+  color: #9f2121;
+  border: 1px solid #f8c9c7;
+}
+
+.payment-callback-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payment-callback-chip {
+  border: 1px solid #d8e4f6;
+  border-radius: 999px;
+  padding: 8px 13px;
+  color: var(--ink-700);
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.payment-callback-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payment-callback-item {
+  margin: 0;
+  border-radius: 16px;
+  border: 1px solid #dbe6f5;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.payment-callback-item dt {
+  color: var(--ink-500);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.payment-callback-item dd {
+  margin: 0;
+  color: var(--ink-900);
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.payment-callback-item-full {
+  grid-column: 1 / -1;
+}
+
+.payment-callback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payment-btn {
+  text-decoration: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.payment-btn:hover {
+  transform: translateY(-1px);
+}
+
+.payment-btn-primary {
+  background: linear-gradient(135deg, var(--brand) 0%, #ff8a52 100%);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(242, 106, 47, 0.28);
+}
+
+.payment-btn-primary:hover {
+  box-shadow: 0 14px 26px rgba(242, 106, 47, 0.32);
+}
+
+.payment-btn-soft {
+  color: var(--ink-700);
+  border-color: #cdd9ea;
+  background: #fff;
+}
+
+.payment-btn-soft:hover {
+  background: #f8fbff;
+}
+
 .notify-toast p {
   margin: 0;
   font-size: 14px;
@@ -542,6 +718,18 @@
   }
 }
 
+@keyframes payment-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 900px) {
   .app-content,
   .app-header,
@@ -585,5 +773,28 @@
 
   .notify-toast {
     max-width: calc(100vw - 24px);
+  }
+
+  .payment-callback-page {
+    padding: 16px;
+    min-height: 72vh;
+  }
+
+  .payment-callback-card {
+    border-radius: 22px;
+    gap: 16px;
+  }
+
+  .payment-callback-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-callback-item-full {
+    grid-column: auto;
+  }
+
+  .payment-btn {
+    flex: 1 1 180px;
+    text-align: center;
   }
 }
