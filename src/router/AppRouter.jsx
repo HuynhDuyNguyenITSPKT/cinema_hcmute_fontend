@@ -6,6 +6,8 @@ import UserLayout from '../layouts/UserLayout'
 import PublicLayout from '../layouts/PublicLayout'
 import AdminProfile from '../pages/AdminProfile'
 import AdminUsers from '../pages/AdminUsers'
+import AdminExtraServices from '../pages/AdminExtraServices'
+import AdminPromotions from '../pages/AdminPromotions'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Home from '../pages/Home'
@@ -48,6 +50,8 @@ function AppRouter() {
         <Route index element={<Navigate to="profile" replace />} />
         <Route path="profile" element={<AdminProfile />} />
         <Route path="users" element={<AdminUsers />} />
+        <Route path="extra-services" element={<AdminExtraServices />} />
+        <Route path="promotions" element={<AdminPromotions />} />
       </Route>
 
       <Route
