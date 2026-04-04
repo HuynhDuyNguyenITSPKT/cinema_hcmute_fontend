@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 const adminTabs = [
   { to: '/admin/profile', label: 'Hồ sơ', icon: '👤' },
   { to: '/admin/users', label: 'Quản lí khách hàng', icon: '👥' },
+  { to: '/admin/extra-services', label: 'Extra Services', icon: '🍿' },
+  { to: '/admin/promotions', label: 'Khuyến mãi', icon: '🏷️' },
   { to: '/admin/movies', label: 'Quản lý phim', icon: '🎬' },
   { to: '/admin/tickets', label: 'Quản lý vé', icon: '🎟️' },
 ]
