@@ -8,7 +8,7 @@ function Login() {
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, loginWithTokens, isAuthenticated, isInitializing, user } = useAuth()
+  const { login, isAuthenticated, isInitializing, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const latestOAuthErrorRef = useRef('')
@@ -33,24 +33,6 @@ function Login() {
       return
     }
 
-    const accessToken = params.get('accessToken')
-    const refreshToken = params.get('refreshToken')
-
-    if (accessToken && refreshToken) {
-      setLoading(true)
-      loginWithTokens(accessToken, refreshToken)
-        .then((profile) => {
-          const rolePath = getDefaultPathByRole(profile?.role)
-          navigate(rolePath, { replace: true })
-        })
-        .catch((err) => {
-          const message = 'Đăng nhập Google thất bại: ' + (err.message || 'Vui lòng thử lại.')
-          setError(message)
-          setLoading(false)
-        })
-      return
-    }
-
     if (!isInitializing && isAuthenticated) {
       const rolePath = getDefaultPathByRole(user?.role)
       const redirectPath = location.state?.from?.pathname || rolePath
@@ -63,7 +45,6 @@ function Login() {
     location.state,
     navigate,
     user?.role,
-    loginWithTokens,
   ])
 
   const handleLogin = async (e) => {

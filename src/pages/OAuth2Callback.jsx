@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { notifyError } from '../utils/notify'
 import { getDefaultPathByRole } from '../utils/roleRoute'
 
+const oauthCodeExchangeStatus = new Map()
+
 function getOAuthParams(search, hash) {
   const params = new URLSearchParams(search)
 
@@ -31,33 +33,19 @@ function resolveOAuthError(params) {
   return typeof errorMessage === 'string' ? errorMessage.trim() : ''
 }
 
-function resolveAccessToken(params) {
-  return (
-    params.get('accessToken') ||
-    params.get('access_token') ||
-    params.get('token') ||
-    ''
-  )
-}
-
-function resolveRefreshToken(params) {
-  return (
-    params.get('refreshToken') ||
-    params.get('refresh_token') ||
-    ''
-  )
+function resolveAuthorizationCode(params) {
+  return params.get('code') || ''
 }
 
 function OAuth2Callback() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { loginWithTokens } = useAuth()
+  const { loginWithOAuthCode, user } = useAuth()
 
   useEffect(() => {
     const params = getOAuthParams(location.search, location.hash)
     const callbackError = resolveOAuthError(params)
-    const accessToken = resolveAccessToken(params)
-    const refreshToken = resolveRefreshToken(params)
+    const authorizationCode = resolveAuthorizationCode(params)
 
     if (callbackError) {
       notifyError(callbackError, 'Đăng nhập Google thất bại')
@@ -68,23 +56,39 @@ function OAuth2Callback() {
       return
     }
 
-    if (accessToken) {
-      loginWithTokens(accessToken, refreshToken)
+    if (authorizationCode) {
+      const exchangeStatus = oauthCodeExchangeStatus.get(authorizationCode)
+
+      if (exchangeStatus === 'in-flight') {
+        return
+      }
+
+      if (exchangeStatus === 'done') {
+        const rolePath = getDefaultPathByRole(user?.role)
+        navigate(rolePath, { replace: true })
+        return
+      }
+
+      oauthCodeExchangeStatus.set(authorizationCode, 'in-flight')
+
+      loginWithOAuthCode(authorizationCode)
         .then((profile) => {
+          oauthCodeExchangeStatus.set(authorizationCode, 'done')
           const rolePath = getDefaultPathByRole(profile?.role)
           navigate(rolePath, { replace: true })
         })
         .catch((err) => {
+          oauthCodeExchangeStatus.delete(authorizationCode)
           const message = err?.message || 'Đăng nhập Google thất bại.'
           notifyError(message, 'Đăng nhập Google thất bại')
           navigate('/login', { replace: true, state: { error: message } })
         })
     } else {
-      const message = 'Không nhận được access token từ Google.'
+      const message = 'Không nhận được mã xác thực từ Google.'
       notifyError(message, 'Đăng nhập Google thất bại')
       navigate('/login', { replace: true, state: { error: message } })
     }
-  }, [location.search, location.hash, loginWithTokens, navigate])
+  }, [location.search, location.hash, loginWithOAuthCode, navigate, user?.role])
 
   return (
     <div className="d-flex justify-content-center align-items-center min-vh-100 bg-dark text-white">

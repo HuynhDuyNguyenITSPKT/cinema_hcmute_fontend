@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
 
   const loginWithTokens = async (accessToken, refreshToken) => {
     setTokens({ accessToken, refreshToken })
-    
+
     const profileResponse = await authService.getMe()
     const profile = profileResponse?.data
 
@@ -71,6 +71,17 @@ export function AuthProvider({ children }) {
 
     setUser(profile)
     return profile
+  }
+
+  const loginWithOAuthCode = async (code) => {
+    const exchangeResponse = await authService.exchangeOAuthCode(code)
+    const tokenData = exchangeResponse?.data
+
+    if (!tokenData?.accessToken) {
+      throw new Error(exchangeResponse?.message || 'Đổi mã đăng nhập Google thất bại.')
+    }
+
+    return loginWithTokens(tokenData.accessToken, tokenData.refreshToken)
   }
 
   const refreshProfile = async () => {
@@ -105,6 +116,7 @@ export function AuthProvider({ children }) {
     isInitializing,
     login,
     loginWithTokens,
+    loginWithOAuthCode,
     refreshProfile,
     setCurrentUser,
     logout,
