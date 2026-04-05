@@ -1,3 +1,5 @@
+Link : FE : https://cinema-hcmute-fontend.vercel.app/
+
 # Cinema HCMUTE Frontend
 
 Frontend cho hệ thống đặt vé phim, xây bằng React + Vite + React Router + Axios + Bootstrap.
