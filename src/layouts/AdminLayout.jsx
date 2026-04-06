@@ -5,10 +5,13 @@ import { useAuth } from '../contexts/AuthContext'
 const adminTabs = [
   { to: '/admin/profile', label: 'Hồ sơ', icon: '👤' },
   { to: '/admin/users', label: 'Quản lí khách hàng', icon: '👥' },
-  { to: '/admin/extra-services', label: 'Extra Services', icon: '🍿' },
+  { to: '/admin/bookings', label: 'Quản lý Đặt Vé', icon: '🎟️' },
+  { to: '/admin/movies', label: 'Quản lý Phim', icon: '🎬' },
+  { to: '/admin/auditoriums', label: 'Phòng Chiếu', icon: '🏛️' },
+  { to: '/admin/showtimes', label: 'Lịch Chiếu', icon: '📅' },
+  { to: '/admin/seat-types', label: 'Loại Ghế & Giá', icon: '🪑' },
+  { to: '/admin/extra-services', label: 'Dịch vụ Thêm', icon: '🍿' },
   { to: '/admin/promotions', label: 'Khuyến mãi', icon: '🏷️' },
-  { to: '/admin/movies', label: 'Quản lý phim', icon: '🎬' },
-  { to: '/admin/tickets', label: 'Quản lý vé', icon: '🎟️' },
 ]
 
 function AdminLayout() {

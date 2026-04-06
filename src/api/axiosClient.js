@@ -107,9 +107,14 @@ function shouldForceLogoutByAuthFailure({ status, requestUrl, message, isPayload
   const verifyRequest = isVerifyTokenRequest(requestUrl)
   const blockedMessage = isLockedAccountMessage(message) || isUnverifiedUserMessage(message)
 
+  // Chỉ đánh giá blockedMessage nếu HTTP Status thực sự là lỗi Auth (401, 403)
+  // hoặc payload 200 mang success=false (isPayloadFailure).
+  // Chặn trường hợp 409 Conflict "Ghế đang bị khoá" bị nhầm thành khóa tài khoản.
+  const isAuthStatus = status === 401 || status === 403 || status === 423 || isPayloadFailure;
+
   return (
     status === 423 ||
-    blockedMessage ||
+    (isAuthStatus && blockedMessage) ||
     (verifyRequest && (status === 401 || status === 403 || isPayloadFailure))
   )
 }

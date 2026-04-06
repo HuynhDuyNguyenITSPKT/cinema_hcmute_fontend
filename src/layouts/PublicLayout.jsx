@@ -55,6 +55,11 @@ function PublicLayout({ children }) {
                     <li>
                       <Link className="dropdown-item" to={user?.role === 'ADMIN' ? '/admin/profile' : '/user/profile'}>Hồ Sơ Của Tôi</Link>
                     </li>
+                    {user?.role !== 'ADMIN' && (
+                      <li>
+                        <Link className="dropdown-item" to="/user/tickets">🎟️ Vé Của Tôi</Link>
+                      </li>
+                    )}
                     <li><hr className="dropdown-divider" /></li>
                     <li><button className="dropdown-item text-danger" onClick={handleLogout}>Đăng Xuất</button></li>
                   </ul>

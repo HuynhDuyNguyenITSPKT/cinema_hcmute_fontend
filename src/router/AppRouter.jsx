@@ -4,10 +4,18 @@ import AdminLayout from '../layouts/AdminLayout'
 import GuestLayout from '../layouts/GuestLayout'
 import UserLayout from '../layouts/UserLayout'
 import PublicLayout from '../layouts/PublicLayout'
+// Existing Admin Pages
 import AdminProfile from '../pages/AdminProfile'
 import AdminUsers from '../pages/AdminUsers'
 import AdminExtraServices from '../pages/AdminExtraServices'
 import AdminPromotions from '../pages/AdminPromotions'
+// New Admin Pages
+import AdminMovies from '../pages/AdminMovies'
+import AdminAuditoriums from '../pages/AdminAuditoriums'
+import AdminShowtimes from '../pages/AdminShowtimes'
+import AdminSeatTypes from '../pages/AdminSeatTypes'
+import AdminBookings from '../pages/AdminBookings'
+// Auth Pages
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Home from '../pages/Home'
@@ -16,10 +24,16 @@ import ForgotPassword from '../pages/ForgotPassword'
 import OAuth2Callback from '../pages/OAuth2Callback'
 import PaymentCallback from '../pages/PaymentCallback'
 import RoleBasedRedirect from './RoleBasedRedirect'
+// New Customer Pages
+import MovieDetails from '../pages/MovieDetails'
+import SeatSelection from '../pages/SeatSelection'
+import Checkout from '../pages/Checkout'
+import MyTickets from '../pages/MyTickets'
 
 function AppRouter() {
   return (
     <Routes>
+      {/* Guest routes: login / register / auth */}
       <Route element={<GuestLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -27,10 +41,30 @@ function AppRouter() {
         <Route path="/oauth2/callback" element={<OAuth2Callback />} />
       </Route>
 
+      {/* Public routes: Home, Movie browsing, Checkout */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/movies/:id" element={<MovieDetails />} />
         <Route path="/callpay" element={<PaymentCallback />} />
       </Route>
+
+      {/* Auth required: Seat selection and Checkout */}
+      <Route
+        path="/seat-selection/:showtimeId"
+        element={
+          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
+            <SeatSelection />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/checkout"
+        element={
+          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
+            <Checkout />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/redirect"
@@ -41,6 +75,7 @@ function AppRouter() {
         }
       />
 
+      {/* Admin routes */}
       <Route
         path="/admin"
         element={
@@ -54,8 +89,15 @@ function AppRouter() {
         <Route path="users" element={<AdminUsers />} />
         <Route path="extra-services" element={<AdminExtraServices />} />
         <Route path="promotions" element={<AdminPromotions />} />
+        {/* New admin routes */}
+        <Route path="movies" element={<AdminMovies />} />
+        <Route path="auditoriums" element={<AdminAuditoriums />} />
+        <Route path="showtimes" element={<AdminShowtimes />} />
+        <Route path="seat-types" element={<AdminSeatTypes />} />
+        <Route path="bookings" element={<AdminBookings />} />
       </Route>
 
+      {/* User routes */}
       <Route
         path="/user"
         element={
@@ -66,6 +108,7 @@ function AppRouter() {
       >
         <Route index element={<Navigate to="profile" replace />} />
         <Route path="profile" element={<UserProfile />} />
+        <Route path="tickets" element={<MyTickets />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
