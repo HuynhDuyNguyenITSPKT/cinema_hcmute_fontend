@@ -16,6 +16,10 @@ import ForgotPassword from '../pages/ForgotPassword'
 import OAuth2Callback from '../pages/OAuth2Callback'
 import PaymentCallback from '../pages/PaymentCallback'
 import RoleBasedRedirect from './RoleBasedRedirect'
+import AdminMovies from '../pages/AdminMovies'
+import AdminShowtimes from '../pages/AdminShowtimes'
+import MovieList from '../pages/MovieList'
+import AdminGenres from '../pages/AdminGenres'
 
 function AppRouter() {
   return (
@@ -29,6 +33,7 @@ function AppRouter() {
 
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/movies" element={<MovieList />} />
         <Route path="/callpay" element={<PaymentCallback />} />
       </Route>
 
@@ -54,6 +59,9 @@ function AppRouter() {
         <Route path="users" element={<AdminUsers />} />
         <Route path="extra-services" element={<AdminExtraServices />} />
         <Route path="promotions" element={<AdminPromotions />} />
+        <Route path="movies" element={<AdminMovies />} />
+        <Route path="genres" element={<AdminGenres />} />
+        <Route path="showtimes" element={<AdminShowtimes />} />
       </Route>
 
       <Route
