@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import publicService from '../services/publicService'
 import { createGenreOptions, getGenreLabels } from '../utils/genreFactory'
 import { movieEventBus } from '../utils/movieEventBus'
@@ -7,6 +7,7 @@ import { movieEventBus } from '../utils/movieEventBus'
 const PAGE_SIZE = 12
 const MULTI_GENRE_FETCH_SIZE = 60
 const MAX_MULTI_GENRE_FETCH_PAGES = 30
+const PUBLIC_MOVIE_STATUSES = ['NOW_SHOWING', 'COMING_SOON']
 
 const STATUS_LABEL = {
   NOW_SHOWING: 'Đang chiếu',
@@ -94,6 +95,7 @@ function toYoutubeAutoplayEmbedUrl(value, muted = true) {
 }
 
 function MovieList() {
+  const [searchParams] = useSearchParams()
   const [movies, setMovies] = useState([])
   const [genres, setGenres] = useState([])
   const [page, setPage] = useState(0)
@@ -116,8 +118,9 @@ function MovieList() {
 
   const genreOptions = createGenreOptions(genres)
   const detailTrailerEmbedUrl = toYoutubeEmbedUrl(detailMovie?.trailerUrl)
+  const autoOpenedQueryRef = useRef('')
 
-  const fetchAllMoviesForMultiGenre = useCallback(async (kw = '') => {
+  const fetchAllMoviesForMultiGenre = useCallback(async (kw = '', status = 'NOW_SHOWING') => {
     const allMovies = []
     let currentPage = 0
     let totalPages = 1
@@ -127,6 +130,7 @@ function MovieList() {
       const res = await publicService.searchMovies({
         keyword: kw,
         genreId: '',
+        status,
         page: currentPage,
         size: MULTI_GENRE_FETCH_SIZE,
       })
@@ -154,29 +158,42 @@ function MovieList() {
     setError('')
 
     try {
-      if (gIds.length <= 1) {
-        const genreId = gIds[0] ?? ''
-        const res = await publicService.searchMovies({ keyword: kw, genreId, page: targetPage, size: PAGE_SIZE })
-        const data = res?.data ?? {}
-        setMovies(Array.isArray(data.currentItems) ? data.currentItems : [])
-        setPage(data.currentPage ?? 0)
-        setTotalPages(data.totalPages ?? 0)
-      } else {
-        const allMovies = await fetchAllMoviesForMultiGenre(kw)
-        const filteredMovies = allMovies.filter((movie) =>
-          (movie.genres ?? []).some((genre) => gIds.includes(genre?.id))
-        )
+      const moviesByStatus = await Promise.all(
+        PUBLIC_MOVIE_STATUSES.map((status) => fetchAllMoviesForMultiGenre(kw, status))
+      )
 
-        const calculatedTotalPages = Math.ceil(filteredMovies.length / PAGE_SIZE)
-        const boundedPage = calculatedTotalPages > 0
-          ? Math.min(targetPage, calculatedTotalPages - 1)
-          : 0
-        const start = boundedPage * PAGE_SIZE
+      const mergedMovies = []
+      const seenMovieIds = new Set()
 
-        setMovies(filteredMovies.slice(start, start + PAGE_SIZE))
-        setPage(boundedPage)
-        setTotalPages(calculatedTotalPages)
-      }
+      moviesByStatus.flat().forEach((movie) => {
+        const movieId = String(movie?.id ?? '')
+
+        if (movieId && seenMovieIds.has(movieId)) {
+          return
+        }
+
+        if (movieId) {
+          seenMovieIds.add(movieId)
+        }
+
+        mergedMovies.push(movie)
+      })
+
+      const filteredMovies = gIds.length > 0
+        ? mergedMovies.filter((movie) =>
+            gIds.every((id) => (movie.genres ?? []).some((genre) => String(genre?.id) === String(id)))
+          )
+        : mergedMovies
+
+      const calculatedTotalPages = Math.ceil(filteredMovies.length / PAGE_SIZE)
+      const boundedPage = calculatedTotalPages > 0
+        ? Math.min(targetPage, calculatedTotalPages - 1)
+        : 0
+      const start = boundedPage * PAGE_SIZE
+
+      setMovies(filteredMovies.slice(start, start + PAGE_SIZE))
+      setPage(boundedPage)
+      setTotalPages(calculatedTotalPages)
     } catch (err) {
       setError(err?.message ?? 'Không thể tải danh sách phim.')
     } finally {
@@ -190,6 +207,35 @@ function MovieList() {
     // fetchMovies ở đây chỉ chạy 1 lần lúc mount với bộ lọc rỗng.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const shouldOpenShowtime = searchParams.get('openShowtimes') === '1'
+    const movieId = searchParams.get('movieId')
+
+    if (!shouldOpenShowtime || !movieId) {
+      return
+    }
+
+    const queryKey = searchParams.toString()
+    if (autoOpenedQueryRef.current === queryKey) {
+      return
+    }
+
+    const movieFromList = movies.find((movie) => String(movie.id) === String(movieId))
+    const movieTitleFromQuery = searchParams.get('movieTitle')
+    const requestedMovie = movieFromList || {
+      id: movieId,
+      title: movieTitleFromQuery || 'Phim đã chọn',
+      status: 'NOW_SHOWING',
+    }
+
+    autoOpenedQueryRef.current = queryKey
+    setDetailMovie(null)
+    setShowtimeMovie(requestedMovie)
+    setShowtimeError('')
+    setShowtimes([])
+    setShowtimeDate(getTodayDateInput())
+  }, [movies, searchParams])
 
   const fetchShowtimes = useCallback(async (movieId, date) => {
     if (!movieId || !date) {
@@ -326,7 +372,9 @@ function MovieList() {
               </div>
             ))}
           </div>
-          <small className="text-secondary">Không chọn thể loại sẽ hiển thị tất cả phim đang chiếu.</small>
+          <small className="text-secondary">
+            Không chọn thể loại sẽ hiển thị tất cả phim công khai. Khi chọn nhiều thể loại, phim phải có đủ tất cả thể loại đã chọn.
+          </small>
         </div>
       </form>
 

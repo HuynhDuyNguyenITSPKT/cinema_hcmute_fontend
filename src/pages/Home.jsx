@@ -5,6 +5,11 @@ import { getGenreLabels } from '../utils/genreFactory'
 
 const PREVIEW_SIZE = 6
 
+const HOME_MOVIE_STATUS_OPTIONS = [
+  { value: 'NOW_SHOWING', label: 'Phim đang chiếu' },
+  { value: 'COMING_SOON', label: 'Phim sắp chiếu' },
+]
+
 function truncateText(text, maxLength = 95) {
   const normalized = String(text || '').trim()
   if (!normalized) return 'Nội dung phim đang được cập nhật.'
@@ -61,10 +66,13 @@ function toYoutubeAutoplayEmbedUrl(value, muted = true) {
 
 function Home() {
   const [movies, setMovies] = useState([])
+  const [movieStatusFilter, setMovieStatusFilter] = useState('NOW_SHOWING')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [previewMovieId, setPreviewMovieId] = useState(null)
   const [audioPreviewMovieId, setAudioPreviewMovieId] = useState(null)
+
+  const currentStatusLabel = HOME_MOVIE_STATUS_OPTIONS.find((opt) => opt.value === movieStatusFilter)?.label ?? 'Phim đang chiếu'
 
   useEffect(() => {
     let active = true
@@ -73,7 +81,7 @@ function Home() {
       setLoading(true)
       setError('')
       try {
-        const res = await publicService.searchMovies({ page: 0, size: PREVIEW_SIZE })
+        const res = await publicService.searchMovies({ page: 0, size: PREVIEW_SIZE, status: movieStatusFilter })
         const items = res?.data?.currentItems ?? []
         if (active) {
           setMovies(Array.isArray(items) ? items : [])
@@ -95,7 +103,7 @@ function Home() {
     return () => {
       active = false
     }
-  }, [])
+  }, [movieStatusFilter])
 
   return (
     <div className="container mt-5">
@@ -127,7 +135,29 @@ function Home() {
       </div>
 
       <div className="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
-        <h2 className="text-light m-0">Phim đang chiếu</h2>
+        <div className="dropdown">
+          <button
+            type="button"
+            className="btn btn-outline-light dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            {currentStatusLabel}
+          </button>
+          <ul className="dropdown-menu">
+            {HOME_MOVIE_STATUS_OPTIONS.map((option) => (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  className={`dropdown-item ${movieStatusFilter === option.value ? 'active' : ''}`}
+                  onClick={() => setMovieStatusFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
         <Link to="/movies" className="text-danger fw-bold text-decoration-none">Xem thêm &raquo;</Link>
       </div>
 
@@ -138,7 +168,7 @@ function Home() {
       )}
 
       {!loading && movies.length === 0 && !error && (
-        <div className="text-center text-secondary py-5">Chưa có phim đang chiếu.</div>
+        <div className="text-center text-secondary py-5">Chưa có {currentStatusLabel.toLowerCase()}.</div>
       )}
 
       <div className="row g-4 mb-5">
@@ -225,7 +255,7 @@ function Home() {
                   )}
                   {movie.status === 'NOW_SHOWING' ? (
                     <Link
-                      to="/movies"
+                      to={`/movies?openShowtimes=1&movieId=${encodeURIComponent(movie.id)}&movieTitle=${encodeURIComponent(movie.title)}`}
                       className={`btn btn-danger ${movie.trailerUrl ? 'flex-fill' : 'w-100'}`}
                     >
                       Lịch chiếu

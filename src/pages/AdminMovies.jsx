@@ -98,6 +98,14 @@ function truncateText(text, maxLength = 110) {
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
+function normalizeForSearch(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function includesKeyword(value, keyword) {
+  return normalizeForSearch(value).includes(keyword)
+}
+
 function AdminMovies() {
   const [movies, setMovies] = useState([])
   const [genres, setGenres] = useState([])
@@ -106,6 +114,10 @@ function AdminMovies() {
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [inputKeyword, setInputKeyword] = useState('')
+  const [selectedGenreIds, setSelectedGenreIds] = useState([])
+  const [selectedStatus, setSelectedStatus] = useState('')
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -118,11 +130,17 @@ function AdminMovies() {
 
   const [deletingId, setDeletingId] = useState(null)
 
-  const fetchMovies = useCallback(async (targetPage = 0) => {
+  const fetchMovies = useCallback(async (targetPage = 0, kw = '', genreIds = []) => {
     setLoading(true)
     setError('')
     try {
-      const res = await movieService.getPageable({ page: targetPage, size: PAGE_SIZE })
+      const genreIdForApi = genreIds.length === 1 ? genreIds[0] : ''
+      const res = await movieService.getPageable({
+        page: targetPage,
+        size: PAGE_SIZE,
+        keyword: kw,
+        genreId: genreIdForApi,
+      })
       const data = res?.data ?? {}
       setMovies(data.currentItems ?? [])
       setPage(data.currentPage ?? 0)
@@ -156,7 +174,7 @@ function AdminMovies() {
   }, [])
 
   useEffect(() => {
-    fetchMovies(0)
+    fetchMovies(0, '', [])
     fetchGenres()
   }, [fetchMovies, fetchGenres])
 
@@ -248,7 +266,7 @@ function AdminMovies() {
         movieEventBus.emitCreated(res?.data)
       }
       closeModal()
-      fetchMovies(page)
+      fetchMovies(page, keyword, selectedGenreIds)
     } catch (err) {
       const message = err?.message ?? 'Lưu phim thất bại.'
       setFormError(message)
@@ -265,7 +283,7 @@ function AdminMovies() {
       const res = await movieService.remove(movie.id)
       notifySuccess(res?.message ?? 'Xoá phim thành công.')
       movieEventBus.emitDeleted(movie.id)
-      fetchMovies(page)
+      fetchMovies(page, keyword, selectedGenreIds)
     } catch (err) {
       notifyError(err?.message ?? 'Xoá phim thất bại.')
     } finally {
@@ -274,6 +292,55 @@ function AdminMovies() {
   }
 
   const statusLabel = (s) => MOVIE_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s
+  const selectedStatusLabel = selectedStatus ? statusLabel(selectedStatus) : ''
+  const normalizedKeyword = normalizeForSearch(keyword)
+  const selectedGenreLabels = genreOptions
+    .filter((opt) => selectedGenreIds.some((id) => String(id) === String(opt.value)))
+    .map((opt) => opt.label)
+  const filteredMovies =
+    normalizedKeyword.length > 0 || selectedGenreIds.length > 0 || selectedStatus
+      ? movies.filter((movie) => (
+          (
+            normalizedKeyword.length === 0 ||
+            includesKeyword(movie.title, normalizedKeyword) ||
+            includesKeyword(movie.director, normalizedKeyword) ||
+            includesKeyword(movie.cast, normalizedKeyword)
+          ) &&
+          (
+            selectedGenreIds.length === 0 ||
+            selectedGenreIds.every((id) =>
+              (movie.genres ?? []).some((genre) => String(genre?.id) === String(id))
+            )
+          ) &&
+          (
+            !selectedStatus || String(movie.status) === String(selectedStatus)
+          )
+        ))
+      : movies
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    const nextKeyword = inputKeyword.trim()
+    setKeyword(nextKeyword)
+    fetchMovies(0, nextKeyword, selectedGenreIds)
+  }
+
+  const handleGenreFilterToggle = (genreId) => {
+    const nextGenreIds = selectedGenreIds.some((id) => String(id) === String(genreId))
+      ? selectedGenreIds.filter((id) => String(id) !== String(genreId))
+      : [...selectedGenreIds, genreId]
+
+    setSelectedGenreIds(nextGenreIds)
+    fetchMovies(0, keyword, nextGenreIds)
+  }
+
+  const handleClearSearch = () => {
+    setInputKeyword('')
+    setKeyword('')
+    setSelectedGenreIds([])
+    setSelectedStatus('')
+    fetchMovies(0, '', [])
+  }
 
   return (
     <section className="container-fluid px-2 px-md-3 px-xl-4">
@@ -297,21 +364,96 @@ function AdminMovies() {
             </div>
           </div>
 
+          <form className="row g-2 mb-3" onSubmit={handleSearch}>
+            <div className="col-12 col-md-6 col-lg-5">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Tìm theo tên phim, đạo diễn hoặc diễn viên..."
+                value={inputKeyword}
+                onChange={(e) => setInputKeyword(e.target.value)}
+              />
+            </div>
+            <div className="col-12 col-md-4 col-lg-3">
+              <select
+                className="form-select"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="">Tất cả trạng thái</option>
+                {MOVIE_STATUS_OPTIONS.map((statusOption) => (
+                  <option key={statusOption.value} value={statusOption.value}>
+                    {statusOption.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-auto d-flex gap-2">
+              <button type="submit" className="btn btn-outline-primary" disabled={loading}>
+                {loading ? 'Đang tìm...' : 'Tìm kiếm'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={handleClearSearch}
+                disabled={loading || (!keyword && !inputKeyword && selectedGenreIds.length === 0 && !selectedStatus)}
+              >
+                Làm mới
+              </button>
+            </div>
+
+            <div className="col-12">
+              <label className="form-label small text-secondary mb-1">Thể loại (chọn nhiều)</label>
+              <div className="d-flex flex-wrap gap-3 p-2 border rounded bg-light">
+                {genreOptions.length === 0 && (
+                  <span className="text-secondary small">Không có thể loại.</span>
+                )}
+
+                {genreOptions.map((opt) => (
+                  <div key={opt.value} className="form-check mb-0">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id={`movie-filter-genre-${opt.value}`}
+                      checked={selectedGenreIds.some((id) => String(id) === String(opt.value))}
+                      onChange={() => handleGenreFilterToggle(opt.value)}
+                    />
+                    <label className="form-check-label" htmlFor={`movie-filter-genre-${opt.value}`}>
+                      {opt.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </form>
+
+          {(keyword || selectedGenreIds.length > 0 || selectedStatus) && (
+            <div className="small text-secondary mb-3">
+              Kết quả lọc
+              {keyword ? ` từ khóa "${keyword}"` : ''}
+              {selectedGenreLabels.length > 0 ? `, thể loại "${selectedGenreLabels.join(', ')}"` : ''}
+              {selectedStatusLabel ? `, trạng thái "${selectedStatusLabel}"` : ''}
+              : {filteredMovies.length} phim trên trang hiện tại.
+            </div>
+          )}
+
           {error && <div className="alert alert-danger py-2 px-3">{error}</div>}
 
           {loading && (
             <div className="text-center text-secondary py-5">Đang tải...</div>
           )}
 
-          {!loading && movies.length === 0 && (
+          {!loading && filteredMovies.length === 0 && (
             <div className="text-center text-secondary py-5 border rounded-3 bg-white">
-              Không có dữ liệu.
+              {keyword || selectedGenreIds.length > 0 || selectedStatus
+                ? 'Không tìm thấy phim phù hợp trên trang hiện tại.'
+                : 'Không có dữ liệu.'}
             </div>
           )}
 
-          {!loading && movies.length > 0 && (
+          {!loading && filteredMovies.length > 0 && (
             <div className="row g-4">
-              {movies.map((movie, idx) => {
+              {filteredMovies.map((movie, idx) => {
                 const isAudioPreview = audioPreviewMovieId === movie.id
                 const trailerPreviewUrl = toYoutubeAutoplayEmbedUrl(movie.trailerUrl, !isAudioPreview)
 
@@ -456,14 +598,14 @@ function AdminMovies() {
                 <button
                   className="btn btn-outline-secondary btn-sm"
                   disabled={loading || page <= 0}
-                  onClick={() => fetchMovies(page - 1)}
+                  onClick={() => fetchMovies(page - 1, keyword, selectedGenreIds)}
                 >
                   Trước
                 </button>
                 <button
                   className="btn btn-outline-secondary btn-sm"
                   disabled={loading || page >= totalPages - 1}
-                  onClick={() => fetchMovies(page + 1)}
+                  onClick={() => fetchMovies(page + 1, keyword, selectedGenreIds)}
                 >
                   Sau
                 </button>
