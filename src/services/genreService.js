@@ -1,8 +1,14 @@
 import axiosClient from '../api/axiosClient'
 
 const genreService = {
-  getPageable: ({ page = 0, size = 100 } = {}) =>
-    axiosClient.get('/admin/genres', { params: { page, size } }),
+  getPageable: ({ page = 0, size = 100, keyword = '' } = {}) =>
+    axiosClient.get('/admin/genres', {
+      params: {
+        page,
+        size,
+        ...(keyword ? { keyword } : {}),
+      },
+    }),
 
   getById: (id) => axiosClient.get(`/admin/genres/${id}`),
 

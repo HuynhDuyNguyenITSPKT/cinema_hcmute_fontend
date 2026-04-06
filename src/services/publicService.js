@@ -1,11 +1,12 @@
 import axiosClient from '../api/axiosClient'
 
 const publicService = {
-  searchMovies: ({ keyword = '', genreId = '', page = 0, size = 12 } = {}) =>
+  searchMovies: ({ keyword = '', genreId = '', status = '', page = 0, size = 12 } = {}) =>
     axiosClient.get('/public/cinema/movies', {
       params: {
         ...(keyword ? { keyword } : {}),
         ...(genreId ? { genreId } : {}),
+        ...(status ? { status } : {}),
         page,
         size,
       },
@@ -16,12 +17,13 @@ const publicService = {
 
   getGenres: () => axiosClient.get('/genres'),
 
-  loadMovieListPage: async ({ keyword = '', genreId = '', page = 0, size = 12 } = {}) => {
+  loadMovieListPage: async ({ keyword = '', genreId = '', status = '', page = 0, size = 12 } = {}) => {
     const [moviesRes, genresRes] = await Promise.all([
       axiosClient.get('/public/cinema/movies', {
         params: {
           ...(keyword ? { keyword } : {}),
           ...(genreId ? { genreId } : {}),
+          ...(status ? { status } : {}),
           page,
           size,
         },

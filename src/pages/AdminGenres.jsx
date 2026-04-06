@@ -9,6 +9,10 @@ const EMPTY_FORM = {
   name: '',
 }
 
+function normalizeForSearch(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
 function AdminGenres() {
   const [genres, setGenres] = useState([])
   const [page, setPage] = useState(0)
@@ -16,6 +20,8 @@ function AdminGenres() {
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [inputKeyword, setInputKeyword] = useState('')
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -25,12 +31,12 @@ function AdminGenres() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
 
-  const fetchGenres = useCallback(async (targetPage = 0) => {
+  const fetchGenres = useCallback(async (targetPage = 0, kw = '') => {
     setLoading(true)
     setError('')
 
     try {
-      const res = await genreService.getPageable({ page: targetPage, size: PAGE_SIZE })
+      const res = await genreService.getPageable({ page: targetPage, size: PAGE_SIZE, keyword: kw })
       const data = res?.data ?? {}
       setGenres(data.currentItems ?? [])
       setPage(data.currentPage ?? 0)
@@ -45,7 +51,7 @@ function AdminGenres() {
   }, [])
 
   useEffect(() => {
-    fetchGenres(0)
+    fetchGenres(0, '')
   }, [fetchGenres])
 
   const openCreate = () => {
@@ -109,7 +115,7 @@ function AdminGenres() {
       }
 
       closeModal()
-      fetchGenres(page)
+      fetchGenres(page, keyword)
     } catch (err) {
       const message = err?.message ?? 'Lưu thể loại thất bại.'
       setFormError(message)
@@ -133,12 +139,30 @@ function AdminGenres() {
       notifySuccess(res?.message ?? 'Xoá thể loại thành công.')
 
       const nextPage = genres.length === 1 && page > 0 ? page - 1 : page
-      fetchGenres(nextPage)
+      fetchGenres(nextPage, keyword)
     } catch (err) {
       notifyError(err?.message ?? 'Xoá thể loại thất bại.')
     } finally {
       setDeletingId(null)
     }
+  }
+
+  const normalizedKeyword = normalizeForSearch(keyword)
+  const filteredGenres = normalizedKeyword
+    ? genres.filter((genre) => normalizeForSearch(genre?.name).includes(normalizedKeyword))
+    : genres
+
+  const handleSearch = (event) => {
+    event.preventDefault()
+    const nextKeyword = inputKeyword.trim()
+    setKeyword(nextKeyword)
+    fetchGenres(0, nextKeyword)
+  }
+
+  const handleResetSearch = () => {
+    setInputKeyword('')
+    setKeyword('')
+    fetchGenres(0, '')
   }
 
   return (
@@ -160,6 +184,37 @@ function AdminGenres() {
             </div>
           </div>
 
+          <form className="row g-2 mb-3" onSubmit={handleSearch}>
+            <div className="col-12 col-md-6 col-lg-5">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Tìm theo tên thể loại..."
+                value={inputKeyword}
+                onChange={(event) => setInputKeyword(event.target.value)}
+              />
+            </div>
+            <div className="col-auto d-flex gap-2">
+              <button type="submit" className="btn btn-outline-primary" disabled={loading}>
+                {loading ? 'Đang tìm...' : 'Tìm kiếm'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={handleResetSearch}
+                disabled={loading || (!keyword && !inputKeyword)}
+              >
+                Làm mới
+              </button>
+            </div>
+          </form>
+
+          {keyword && (
+            <div className="small text-secondary mb-3">
+              Kết quả cho "{keyword}": {filteredGenres.length} thể loại trên trang hiện tại.
+            </div>
+          )}
+
           {error && <div className="alert alert-danger py-2 px-3">{error}</div>}
 
           <div className="table-responsive border rounded-3 bg-white">
@@ -178,13 +233,15 @@ function AdminGenres() {
                   </tr>
                 )}
 
-                {!loading && genres.length === 0 && (
+                {!loading && filteredGenres.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="text-center text-secondary py-4">Không có dữ liệu.</td>
+                    <td colSpan={3} className="text-center text-secondary py-4">
+                      {keyword ? 'Không tìm thấy thể loại phù hợp trên trang hiện tại.' : 'Không có dữ liệu.'}
+                    </td>
                   </tr>
                 )}
 
-                {genres.map((genre, idx) => (
+                {filteredGenres.map((genre, idx) => (
                   <tr key={genre.id}>
                     <td className="text-center">{page * PAGE_SIZE + idx + 1}</td>
                     <td className="fw-semibold">{genre.name ?? '-'}</td>
@@ -220,7 +277,7 @@ function AdminGenres() {
                   type="button"
                   className="btn btn-outline-secondary btn-sm"
                   disabled={loading || page <= 0}
-                  onClick={() => fetchGenres(page - 1)}
+                  onClick={() => fetchGenres(page - 1, keyword)}
                 >
                   Trước
                 </button>
@@ -228,7 +285,7 @@ function AdminGenres() {
                   type="button"
                   className="btn btn-outline-secondary btn-sm"
                   disabled={loading || page >= totalPages - 1}
-                  onClick={() => fetchGenres(page + 1)}
+                  onClick={() => fetchGenres(page + 1, keyword)}
                 >
                   Sau
                 </button>

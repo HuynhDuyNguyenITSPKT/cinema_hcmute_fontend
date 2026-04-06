@@ -1,8 +1,15 @@
 import axiosClient from '../api/axiosClient'
 
 const movieService = {
-  getPageable: ({ page = 0, size = 10 } = {}) =>
-    axiosClient.get('/admin/movies', { params: { page, size } }),
+  getPageable: ({ page = 0, size = 10, keyword = '', genreId = '' } = {}) =>
+    axiosClient.get('/admin/movies', {
+      params: {
+        page,
+        size,
+        ...(keyword ? { keyword } : {}),
+        ...(genreId ? { genreId } : {}),
+      },
+    }),
 
   getById: (id) => axiosClient.get(`/admin/movies/${id}`),
 
