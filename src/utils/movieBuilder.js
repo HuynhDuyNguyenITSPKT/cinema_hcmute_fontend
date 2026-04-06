@@ -31,7 +31,7 @@ class MovieBuilder {
     const errors = []
     if (!this._data.title) errors.push('Tên phim không được để trống.')
     if (this._data.durationMinutes <= 0) errors.push('Thời lượng phải lớn hơn 0 phút.')
-    if (!this._data.releaseDate) errors.push('Ngày phát hành không được để trống.')
+    if (!this._data.releaseDate) errors.push('Ngày khởi chiếu không được để trống.')
     if (!this._data.ageRating) errors.push('Độ tuổi quy định không được để trống.')
     if (!this._data.status) errors.push('Trạng thái phim không được để trống.')
     return errors

@@ -35,7 +35,7 @@ function PublicLayout({ children }) {
                 <Link className="nav-link active" to="/">Trang Chủ</Link>
               </li>
               <li className="nav-item">
-                <Link className="nav-link" to="/">Lịch Chiếu</Link>
+                <Link className="nav-link" to="/movies">Lịch Chiếu</Link>
               </li>
               <li className="nav-item">
                 <Link className="nav-link" to="/">Khuyến Mãi</Link>

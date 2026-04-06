@@ -19,6 +19,7 @@ import RoleBasedRedirect from './RoleBasedRedirect'
 import AdminMovies from '../pages/AdminMovies'
 import AdminShowtimes from '../pages/AdminShowtimes'
 import MovieList from '../pages/MovieList'
+import AdminGenres from '../pages/AdminGenres'
 
 function AppRouter() {
   return (
@@ -59,6 +60,7 @@ function AppRouter() {
         <Route path="extra-services" element={<AdminExtraServices />} />
         <Route path="promotions" element={<AdminPromotions />} />
         <Route path="movies" element={<AdminMovies />} />
+        <Route path="genres" element={<AdminGenres />} />
         <Route path="showtimes" element={<AdminShowtimes />} />
       </Route>
 

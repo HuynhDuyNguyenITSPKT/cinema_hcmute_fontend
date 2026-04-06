@@ -4,6 +4,8 @@ const genreService = {
   getPageable: ({ page = 0, size = 100 } = {}) =>
     axiosClient.get('/admin/genres', { params: { page, size } }),
 
+  getById: (id) => axiosClient.get(`/admin/genres/${id}`),
+
   getAll: () => axiosClient.get('/genres'),
 
   create: (payload) => axiosClient.post('/admin/genres', payload),
