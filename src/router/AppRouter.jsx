@@ -29,6 +29,8 @@ import MovieDetails from '../pages/MovieDetails'
 import SeatSelection from '../pages/SeatSelection'
 import Checkout from '../pages/Checkout'
 import MyTickets from '../pages/MyTickets'
+import MovieList from '../pages/MovieList'
+import AdminGenres from '../pages/AdminGenres'
 
 function AppRouter() {
   return (
@@ -44,6 +46,7 @@ function AppRouter() {
       {/* Public routes: Home, Movie browsing, Checkout */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/movies" element={<MovieList />} />
         <Route path="/movies/:id" element={<MovieDetails />} />
         <Route path="/callpay" element={<PaymentCallback />} />
       </Route>
@@ -90,6 +93,7 @@ function AppRouter() {
         <Route path="extra-services" element={<AdminExtraServices />} />
         <Route path="promotions" element={<AdminPromotions />} />
         {/* New admin routes */}
+        <Route path="genres" element={<AdminGenres />} />
         <Route path="movies" element={<AdminMovies />} />
         <Route path="auditoriums" element={<AdminAuditoriums />} />
         <Route path="showtimes" element={<AdminShowtimes />} />

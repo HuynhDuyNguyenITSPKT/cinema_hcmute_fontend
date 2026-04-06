@@ -1,0 +1,24 @@
+import axiosClient from '../api/axiosClient'
+
+const genreService = {
+  getPageable: ({ page = 0, size = 100, keyword = '' } = {}) =>
+    axiosClient.get('/admin/genres', {
+      params: {
+        page,
+        size,
+        ...(keyword ? { keyword } : {}),
+      },
+    }),
+
+  getById: (id) => axiosClient.get(`/admin/genres/${id}`),
+
+  getAll: () => axiosClient.get('/genres'),
+
+  create: (payload) => axiosClient.post('/admin/genres', payload),
+
+  update: (id, payload) => axiosClient.put(`/admin/genres/${id}`, payload),
+
+  remove: (id) => axiosClient.delete(`/admin/genres/${id}`),
+}
+
+export default genreService
