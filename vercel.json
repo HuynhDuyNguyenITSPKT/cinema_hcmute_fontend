@@ -1,11 +1,19 @@
 {
   "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
+  ],
+  "redirects": [
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/.*",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "cinema-ticket-hcmute-frontend.vercel.app"
+        }
+      ],
+      "destination": "https://cinema-hcmute-frontend.vercel.app/$1",
+      "permanent": true
     }
   ]
 }
