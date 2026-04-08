@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import showtimeService from '../services/showtimeService'
 import movieService from '../services/movieService'
@@ -53,6 +53,48 @@ function formatPrice(price) {
   return Number(price).toLocaleString('vi-VN') + ' đ'
 }
 
+function normalizeForSearch(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function toTimestamp(value) {
+  const ts = new Date(value).getTime()
+  return Number.isNaN(ts) ? Number.MAX_SAFE_INTEGER : ts
+}
+
+function formatTimeOnly(dt) {
+  if (!dt) return '--:--'
+  const parsed = new Date(dt)
+  if (Number.isNaN(parsed.getTime())) return '--:--'
+
+  return parsed.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function getDateGroupKey(dt) {
+  const parsed = new Date(dt)
+  if (Number.isNaN(parsed.getTime())) return 'invalid-date'
+
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`
+}
+
+function getMoviePosterUrl(movie) {
+  if (!movie) return ''
+
+  return (
+    movie.posterUrl ||
+    movie.poster ||
+    movie.thumbnailUrl ||
+    movie.imageUrl ||
+    movie.bannerUrl ||
+    ''
+  )
+}
+
 function toDateTimeLocalValue(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     return ''
@@ -74,13 +116,32 @@ function parseDateOnly(dateString) {
   const raw = String(dateString || '').trim()
   if (!raw) return null
 
-  const [year, month, day] = raw.split('-').map(Number)
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  const dateOnlyPart = raw.split('T')[0].split(' ')[0]
+
+  const isoLikeMatch = dateOnlyPart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoLikeMatch) {
+    const year = Number(isoLikeMatch[1])
+    const month = Number(isoLikeMatch[2])
+    const day = Number(isoLikeMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const dmyMatch = dateOnlyPart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1])
+    const month = Number(dmyMatch[2])
+    const year = Number(dmyMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const fallback = new Date(raw)
+  if (Number.isNaN(fallback.getTime())) {
     return null
   }
 
-  const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0)
 }
 
 function suggestStartTimeFromReleaseDate(releaseDate, fallbackDate) {
@@ -139,10 +200,13 @@ function AdminShowtimes() {
   const [auditoriums, setAuditoriums] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [inputKeyword, setInputKeyword] = useState('')
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
+  const [movieFilter, setMovieFilter] = useState('')
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
@@ -185,6 +249,105 @@ function AdminShowtimes() {
       : []
   const hasScheduleConflict = conflictedShowtimes.length > 0
   const isSubmitDisabled = saving || auditoriums.length === 0 || movies.length === 0 || hasScheduleConflict
+  const filteredMoviesForSelect = useMemo(() => {
+    const normalizedMovieFilter = normalizeForSearch(movieFilter)
+
+    if (!normalizedMovieFilter) {
+      return movies
+    }
+
+    return movies.filter((movie) => normalizeForSearch(movie.title).includes(normalizedMovieFilter))
+  }, [movies, movieFilter])
+  const normalizedKeyword = normalizeForSearch(keyword)
+  const filteredShowtimes = normalizedKeyword
+    ? showtimes.filter((st) => {
+        const strategy = detectStrategy(st.startTime)
+        return (
+          normalizeForSearch(st.movieTitle).includes(normalizedKeyword) ||
+          normalizeForSearch(st.auditoriumName).includes(normalizedKeyword) ||
+          normalizeForSearch(strategy.label).includes(normalizedKeyword)
+        )
+      })
+    : showtimes
+  const groupedShowtimes = useMemo(() => {
+    const movieLookup = new Map(movies.map((movie) => [String(movie.id), movie]))
+    const grouped = new Map()
+    const now = new Date()
+    const todayStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+    filteredShowtimes.forEach((st) => {
+      const movieKey = String(st.movieId ?? st.movieTitle ?? st.id)
+      const movie = movieLookup.get(String(st.movieId))
+
+      if (!grouped.has(movieKey)) {
+        grouped.set(movieKey, {
+          key: movieKey,
+          movieTitle: st.movieTitle ?? movie?.title ?? 'Chưa rõ phim',
+          releaseDate: movie?.releaseDate ?? null,
+          movieStatus: movie?.status,
+          posterUrl: getMoviePosterUrl(movie),
+          items: [],
+        })
+      }
+
+      grouped.get(movieKey).items.push(st)
+    })
+
+    return Array.from(grouped.values())
+      .map((group) => {
+        const byDate = new Map()
+        const sortedItems = group.items
+          .slice()
+          .sort((a, b) => toTimestamp(a.startTime) - toTimestamp(b.startTime))
+
+        sortedItems.forEach((st) => {
+            const dateKey = getDateGroupKey(st.startTime)
+            if (!byDate.has(dateKey)) {
+              byDate.set(dateKey, {
+                dateKey,
+                dateLabel: formatDateOnlyVi(dateKey),
+                items: [],
+              })
+            }
+
+            byDate.get(dateKey).items.push(st)
+          })
+
+        return {
+          ...group,
+          showtimeCount: group.items.length,
+          firstShowtimeAt: sortedItems[0]?.startTime ?? null,
+          dates: Array.from(byDate.values()),
+        }
+      })
+      .sort((a, b) => {
+        const releaseTimeA = parseDateOnly(a.releaseDate)?.getTime()
+        const releaseTimeB = parseDateOnly(b.releaseDate)?.getTime()
+        const releaseDistanceA = Number.isFinite(releaseTimeA)
+          ? Math.abs(releaseTimeA - todayStartTime)
+          : Number.MAX_SAFE_INTEGER
+        const releaseDistanceB = Number.isFinite(releaseTimeB)
+          ? Math.abs(releaseTimeB - todayStartTime)
+          : Number.MAX_SAFE_INTEGER
+
+        if (releaseDistanceA !== releaseDistanceB) {
+          return releaseDistanceA - releaseDistanceB
+        }
+
+        if (Number.isFinite(releaseTimeA) && Number.isFinite(releaseTimeB) && releaseTimeA !== releaseTimeB) {
+          return releaseTimeA - releaseTimeB
+        }
+
+        const firstShowtimeA = toTimestamp(a.firstShowtimeAt)
+        const firstShowtimeB = toTimestamp(b.firstShowtimeAt)
+
+        if (firstShowtimeA !== firstShowtimeB) {
+          return firstShowtimeA - firstShowtimeB
+        }
+
+        return normalizeForSearch(a.movieTitle).localeCompare(normalizeForSearch(b.movieTitle))
+      })
+  }, [filteredShowtimes, movies])
 
   const fetchAuditoriums = useCallback(async () => {
     try {
@@ -231,6 +394,7 @@ function AdminShowtimes() {
   const openCreate = () => {
     setEditingId(null)
     setForm(emptyForm)
+    setMovieFilter('')
     setFormError('')
     setShowModal(true)
   }
@@ -243,6 +407,7 @@ function AdminShowtimes() {
       : ''
 
     setEditingId(st.id)
+    setMovieFilter(st.movieTitle ?? '')
     setForm({
       movieId: st.movieId ?? '',
       auditoriumId: st.auditoriumId ?? '',
@@ -257,6 +422,7 @@ function AdminShowtimes() {
     setShowModal(false)
     setEditingId(null)
     setForm(emptyForm)
+    setMovieFilter('')
     setFormError('')
   }
 
@@ -348,6 +514,16 @@ function AdminShowtimes() {
     }
   }
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    setKeyword(inputKeyword.trim())
+  }
+
+  const handleResetSearch = () => {
+    setInputKeyword('')
+    setKeyword('')
+  }
+
   return (
     <section className="container-fluid px-2 px-md-3 px-xl-4">
       <div className="card border-0 shadow-sm">
@@ -380,70 +556,148 @@ function AdminShowtimes() {
             ))}
           </div>
 
+          <form className="row g-2 mb-3" onSubmit={handleSearch}>
+            <div className="col-12 col-md-6 col-lg-5">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Tìm theo tên phim, phòng chiếu hoặc khung giờ..."
+                value={inputKeyword}
+                onChange={(e) => setInputKeyword(e.target.value)}
+              />
+            </div>
+            <div className="col-auto d-flex gap-2">
+              <button type="submit" className="btn btn-outline-primary" disabled={loading}>
+                {loading ? 'Đang tìm...' : 'Tìm kiếm'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={handleResetSearch}
+                disabled={!keyword && !inputKeyword}
+              >
+                Làm mới
+              </button>
+            </div>
+          </form>
+
+          {keyword && (
+            <div className="small text-secondary mb-3">
+              Kết quả cho "{keyword}": {filteredShowtimes.length} suất chiếu.
+            </div>
+          )}
+
+          <div className="d-flex justify-content-end align-items-center mb-3">
+            {!loading && <span className="small text-secondary">Theo phim: {groupedShowtimes.length} phim</span>}
+          </div>
+
           {error && <div className="alert alert-danger py-2 px-3">{error}</div>}
 
-          <div className="table-responsive border rounded-3 bg-white">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th style={{ width: 48 }}>STT</th>
-                  <th>Phim</th>
-                  <th>Phòng chiếu</th>
-                  <th>Bắt đầu</th>
-                  <th>Kết thúc</th>
-                  <th>Giá cơ sở</th>
-                  <th>Khung giờ</th>
-                  <th className="text-end">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={8} className="text-center text-secondary py-4">Đang tải...</td>
-                  </tr>
-                )}
-                {!loading && showtimes.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="text-center text-secondary py-4">
-                      Không có dữ liệu.
-                    </td>
-                  </tr>
-                )}
-                {showtimes.map((st, idx) => {
-                  const strategy = detectStrategy(st.startTime)
-                  return (
-                    <tr key={st.id}>
-                      <td className="text-center">{idx + 1}</td>
-                      <td className="fw-semibold">{st.movieTitle ?? '-'}</td>
-                      <td>{st.auditoriumName ?? '-'}</td>
-                      <td>{formatDateTime(st.startTime)}</td>
-                      <td>{formatDateTime(st.endTime)}</td>
-                      <td>{formatPrice(st.basePrice)}</td>
-                      <td>
-                        <span className={`badge text-bg-${strategy.badgeClass}`}>
-                          {strategy.icon} {strategy.label}
+          <div className="vstack gap-3">
+            {loading && (
+              <div className="border rounded-3 bg-white text-center text-secondary py-4">
+                Đang tải...
+              </div>
+            )}
+
+            {!loading && groupedShowtimes.length === 0 && (
+              <div className="border rounded-3 bg-white text-center text-secondary py-4">
+                {keyword ? 'Không tìm thấy suất chiếu phù hợp.' : 'Không có dữ liệu.'}
+              </div>
+            )}
+
+            {!loading && groupedShowtimes.map((group) => (
+              <article key={group.key} className="border rounded-3 bg-white p-3">
+                <div className="d-flex flex-column flex-md-row gap-3">
+                  <div
+                    className="rounded-3 overflow-hidden border bg-light flex-shrink-0"
+                    style={{ width: 132, height: 190 }}
+                  >
+                    {group.posterUrl ? (
+                      <img
+                        src={group.posterUrl}
+                        alt={group.movieTitle}
+                        className="w-100 h-100"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div className="w-100 h-100 d-flex align-items-center justify-content-center text-secondary fw-semibold fs-4">
+                        {String(group.movieTitle || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-grow-1">
+                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <h3 className="h6 mb-0">{group.movieTitle}</h3>
+                      <span className="badge text-bg-light border">{group.showtimeCount} suất chiếu</span>
+                      {group.movieStatus && (
+                        <span className={`badge text-bg-${MOVIE_STATUS_BADGE[group.movieStatus] ?? 'secondary'}`}>
+                          {MOVIE_STATUS_LABEL[group.movieStatus] ?? group.movieStatus}
                         </span>
-                      </td>
-                      <td className="text-end">
-                        <button
-                          className="btn btn-sm btn-outline-primary me-1"
-                          onClick={() => openEdit(st)}
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleDelete(st)}
-                          disabled={deletingId === st.id}
-                        >
-                          {deletingId === st.id ? '...' : 'Xoá'}
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      )}
+                    </div>
+
+                    <div className="vstack gap-3">
+                      {group.dates.map((dateGroup) => (
+                        <div key={`${group.key}-${dateGroup.dateKey}`}>
+                          <div className="small fw-semibold text-secondary mb-1">
+                            {dateGroup.dateLabel}
+                          </div>
+
+                          <div className="d-flex flex-wrap gap-2">
+                            {dateGroup.items.map((st) => {
+                              const strategy = detectStrategy(st.startTime)
+
+                              return (
+                                <div
+                                  key={st.id}
+                                  className={`border rounded-3 p-2 bg-${strategy.badgeClass}-subtle`}
+                                  style={{ minWidth: 220 }}
+                                >
+                                  <div className="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                      <div className="fw-semibold">{formatTimeOnly(st.startTime)}</div>
+                                      <div className="small text-secondary">
+                                        {formatTimeOnly(st.startTime)} - {formatTimeOnly(st.endTime)}
+                                      </div>
+                                    </div>
+
+                                    <span className={`badge text-bg-${strategy.badgeClass}`}>
+                                      {strategy.label}
+                                    </span>
+                                  </div>
+
+                                  <div className="small mt-1 text-secondary">
+                                    {st.auditoriumName ?? '-'} • {formatPrice(st.basePrice)}
+                                  </div>
+
+                                  <div className="mt-2 d-flex gap-1">
+                                    <button
+                                      className="btn btn-sm btn-light border"
+                                      onClick={() => openEdit(st)}
+                                    >
+                                      Sửa
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-danger"
+                                      onClick={() => handleDelete(st)}
+                                      disabled={deletingId === st.id}
+                                    >
+                                      {deletingId === st.id ? '...' : 'Xoá'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </div>
@@ -454,7 +708,7 @@ function AdminShowtimes() {
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={(e) => e.target === e.currentTarget && closeModal()}
         >
-          <div className="modal-dialog modal-lg modal-dialog-scrollable">
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{editingId ? 'Sửa lịch chiếu' : 'Tạo lịch chiếu'}</h5>
@@ -462,7 +716,7 @@ function AdminShowtimes() {
               </div>
 
               <form onSubmit={handleSave}>
-                <div className="modal-body">
+                <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
                   {auditoriums.length === 0 && !loading && (
                     <div className="alert alert-warning py-2 px-3 small">
                       Chưa có phòng chiếu nên chưa thể tạo lịch. Bạn vẫn có thể xem trước giao diện form như web bán vé thực tế.
@@ -483,6 +737,13 @@ function AdminShowtimes() {
                         <div className="row g-3">
                           <div className="col-12">
                             <label className="form-label">Phim *</label>
+                            <input
+                              type="text"
+                              className="form-control mb-2"
+                              value={movieFilter}
+                              onChange={(e) => setMovieFilter(e.target.value)}
+                              placeholder="Nhập để tìm nhanh tên phim..."
+                            />
                             <select
                               className="form-select"
                               value={form.movieId}
@@ -490,10 +751,15 @@ function AdminShowtimes() {
                               required
                             >
                               <option value="">-- Chọn phim --</option>
-                              {movies.map((m) => (
+                              {filteredMoviesForSelect.map((m) => (
                                 <option key={m.id} value={m.id}>{m.title}</option>
                               ))}
                             </select>
+                            {movieFilter && filteredMoviesForSelect.length === 0 && (
+                              <small className="text-secondary">
+                                Không tìm thấy phim phù hợp với từ khóa hiện tại.
+                              </small>
+                            )}
                             {!editingId && selectedMovie?.releaseDate && (
                               <small className="text-secondary">
                                 Đã gợi ý thời gian bắt đầu theo ngày khởi chiếu: {formatDateOnlyVi(selectedMovie.releaseDate)}.
@@ -668,7 +934,7 @@ function AdminShowtimes() {
                     Huỷ
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={isSubmitDisabled}>
-                    {saving ? 'Đang lưu...' : editingId ? 'Cập nhật' : 'Tạo lịch'}
+                    {saving ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Tạo lịch'}
                   </button>
                 </div>
               </form>
