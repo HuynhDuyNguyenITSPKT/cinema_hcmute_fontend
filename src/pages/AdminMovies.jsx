@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import movieService from '../services/movieService'
 import genreService from '../services/genreService'
@@ -84,9 +84,42 @@ function toYoutubeAutoplayEmbedUrl(value, muted = true) {
   return `${embedUrl}?autoplay=1&mute=${muted ? '1' : '0'}&controls=${muted ? '0' : '1'}&rel=0&modestbranding=1&playsinline=1`
 }
 
+function parseDateOnly(dateString) {
+  const raw = String(dateString || '').trim()
+  if (!raw) return null
+
+  const dateOnlyPart = raw.split('T')[0].split(' ')[0]
+
+  const isoLikeMatch = dateOnlyPart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoLikeMatch) {
+    const year = Number(isoLikeMatch[1])
+    const month = Number(isoLikeMatch[2])
+    const day = Number(isoLikeMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const dmyMatch = dateOnlyPart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1])
+    const month = Number(dmyMatch[2])
+    const year = Number(dmyMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const fallback = new Date(raw)
+  if (Number.isNaN(fallback.getTime())) {
+    return null
+  }
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0)
+}
+
 function formatReleaseDate(dateString) {
   if (!dateString) return '-'
-  const date = new Date(dateString)
+  const date = parseDateOnly(dateString)
+  if (!date) return dateString
   if (Number.isNaN(date.getTime())) return dateString
   return date.toLocaleDateString('vi-VN')
 }
@@ -317,6 +350,33 @@ function AdminMovies() {
           )
         ))
       : movies
+  const sortedMovies = useMemo(() => {
+    const now = new Date()
+    const todayStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+    return filteredMovies
+      .slice()
+      .sort((a, b) => {
+        const releaseTimeA = parseDateOnly(a.releaseDate)?.getTime()
+        const releaseTimeB = parseDateOnly(b.releaseDate)?.getTime()
+        const releaseDistanceA = Number.isFinite(releaseTimeA)
+          ? Math.abs(releaseTimeA - todayStartTime)
+          : Number.MAX_SAFE_INTEGER
+        const releaseDistanceB = Number.isFinite(releaseTimeB)
+          ? Math.abs(releaseTimeB - todayStartTime)
+          : Number.MAX_SAFE_INTEGER
+
+        if (releaseDistanceA !== releaseDistanceB) {
+          return releaseDistanceA - releaseDistanceB
+        }
+
+        if (Number.isFinite(releaseTimeA) && Number.isFinite(releaseTimeB) && releaseTimeA !== releaseTimeB) {
+          return releaseTimeA - releaseTimeB
+        }
+
+        return normalizeForSearch(a.title).localeCompare(normalizeForSearch(b.title))
+      })
+  }, [filteredMovies])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -451,9 +511,9 @@ function AdminMovies() {
             </div>
           )}
 
-          {!loading && filteredMovies.length > 0 && (
+          {!loading && sortedMovies.length > 0 && (
             <div className="row g-4">
-              {filteredMovies.map((movie, idx) => {
+              {sortedMovies.map((movie, idx) => {
                 const isAudioPreview = audioPreviewMovieId === movie.id
                 const trailerPreviewUrl = toYoutubeAutoplayEmbedUrl(movie.trailerUrl, !isAudioPreview)
 

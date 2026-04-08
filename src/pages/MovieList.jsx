@@ -40,10 +40,70 @@ function formatPrice(price) {
   return `${value.toLocaleString('vi-VN')} đ`
 }
 
+function parseDateOnly(dateString) {
+  const raw = String(dateString || '').trim()
+  if (!raw) return null
+
+  const dateOnlyPart = raw.split('T')[0].split(' ')[0]
+
+  const isoLikeMatch = dateOnlyPart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoLikeMatch) {
+    const year = Number(isoLikeMatch[1])
+    const month = Number(isoLikeMatch[2])
+    const day = Number(isoLikeMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const dmyMatch = dateOnlyPart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1])
+    const month = Number(dmyMatch[2])
+    const year = Number(dmyMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const fallback = new Date(raw)
+  if (Number.isNaN(fallback.getTime())) {
+    return null
+  }
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0)
+}
+
+function sortMoviesByNearestReleaseDate(items) {
+  const now = new Date()
+  const todayStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+  return items
+    .slice()
+    .sort((a, b) => {
+      const releaseTimeA = parseDateOnly(a?.releaseDate)?.getTime()
+      const releaseTimeB = parseDateOnly(b?.releaseDate)?.getTime()
+      const releaseDistanceA = Number.isFinite(releaseTimeA)
+        ? Math.abs(releaseTimeA - todayStartTime)
+        : Number.MAX_SAFE_INTEGER
+      const releaseDistanceB = Number.isFinite(releaseTimeB)
+        ? Math.abs(releaseTimeB - todayStartTime)
+        : Number.MAX_SAFE_INTEGER
+
+      if (releaseDistanceA !== releaseDistanceB) {
+        return releaseDistanceA - releaseDistanceB
+      }
+
+      if (Number.isFinite(releaseTimeA) && Number.isFinite(releaseTimeB) && releaseTimeA !== releaseTimeB) {
+        return releaseTimeA - releaseTimeB
+      }
+
+      return String(a?.title ?? '').localeCompare(String(b?.title ?? ''), 'vi')
+    })
+}
+
 function formatReleaseDate(dateString) {
   if (!dateString) return '-'
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) return dateString
+  const date = parseDateOnly(dateString)
+  if (!date || Number.isNaN(date.getTime())) return dateString
   return date.toLocaleDateString('vi-VN')
 }
 
@@ -178,14 +238,15 @@ function MovieList() {
             gIds.every((id) => (movie.genres ?? []).some((genre) => String(genre?.id) === String(id)))
           )
         : mergedMovies
+      const sortedMovies = sortMoviesByNearestReleaseDate(filteredMovies)
 
-      const calculatedTotalPages = Math.ceil(filteredMovies.length / PAGE_SIZE)
+      const calculatedTotalPages = Math.ceil(sortedMovies.length / PAGE_SIZE)
       const boundedPage = calculatedTotalPages > 0
         ? Math.min(targetPage, calculatedTotalPages - 1)
         : 0
       const start = boundedPage * PAGE_SIZE
 
-      setMovies(filteredMovies.slice(start, start + PAGE_SIZE))
+      setMovies(sortedMovies.slice(start, start + PAGE_SIZE))
       setPage(boundedPage)
       setTotalPages(calculatedTotalPages)
     } catch (err) {

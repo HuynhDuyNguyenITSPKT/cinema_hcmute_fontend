@@ -6,7 +6,11 @@ const movieService = {
     axiosClient.get('/public/cinema/movies', { params }),
 
   getShowtimesByMovieAndDate: (movieId, date) =>
-    axiosClient.get(`/public/cinema/movies/${movieId}/showtimes`, { params: { date } }),
+    axiosClient.get(`/public/cinema/movies/${movieId}/showtimes`, {
+      params: {
+        ...(date ? { date } : {}),
+      },
+    }),
 
   getMovieById: (id) => axiosClient.get(`/public/cinema/movies/${id}`),
 
