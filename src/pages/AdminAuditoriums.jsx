@@ -67,6 +67,43 @@ function reconstructFromSeats(seats, totalRows, totalCols) {
   return { disabledSeats, seatTypeMappings }
 }
 
+function normalizeNames(names = []) {
+  return [...new Set(names)].sort()
+}
+
+function normalizeMappings(mappings = {}) {
+  const normalized = {}
+  Object.keys(mappings).sort().forEach(typeId => {
+    normalized[typeId] = normalizeNames(mappings[typeId])
+  })
+  return normalized
+}
+
+function getLayoutSignature(rows, cols, seatTypeMappings, disabledSeats) {
+  return JSON.stringify({
+    rows,
+    cols,
+    seatTypeMappings: normalizeMappings(seatTypeMappings),
+    disabledSeats: normalizeNames(disabledSeats),
+  })
+}
+
+function getValidSeatNames(rows, cols) {
+  const names = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      names.push(`${String.fromCharCode(65 + r)}${c + 1}`)
+    }
+  }
+  return names
+}
+
+function countActualSeats(rows, cols, disabledSeats = []) {
+  const validSeatNames = new Set(getValidSeatNames(rows, cols))
+  const disabledCount = new Set(disabledSeats.filter(name => validSeatNames.has(name))).size
+  return Math.max(0, rows * cols - disabledCount)
+}
+
 // ─── InteractiveSeatMapBuilder ───────────────────────────────────────────────
 
 function InteractiveSeatMapBuilder({ totalRows, totalCols, onChange, seatTypes, initialDisabled, initialMappings }) {
@@ -231,6 +268,7 @@ function AdminAuditoriums() {
   const [seatLayout, setSeatLayout] = useState({ totalRows: 8, totalColumns: 12, seatTypeMappings: {}, disabledSeats: [], defaultSeatTypeId: '' })
   const [initialDisabled, setInitialDisabled] = useState([])
   const [initialMappings, setInitialMappings] = useState({})
+  const [initialLayoutSignature, setInitialLayoutSignature] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -253,6 +291,7 @@ function AdminAuditoriums() {
     setForm({ name: '', status: 'ACTIVE', rows: 8, cols: 12 })
     setInitialDisabled([])
     setInitialMappings({})
+    setInitialLayoutSignature('')
     setSeatLayout({ totalRows: 8, totalColumns: 12, seatTypeMappings: {}, disabledSeats: [], defaultSeatTypeId: '' })
     setError('')
     setShowModal(true)
@@ -274,6 +313,7 @@ function AdminAuditoriums() {
       const { disabledSeats, seatTypeMappings } = reconstructFromSeats(seats, rows, cols)
       setInitialDisabled(disabledSeats)
       setInitialMappings(seatTypeMappings)
+      setInitialLayoutSignature(getLayoutSignature(rows, cols, seatTypeMappings, disabledSeats))
 
       const defaultType = seatTypes.find(t => t.name?.toUpperCase() === 'STANDARD') || seatTypes[0]
       setSeatLayout({
@@ -286,6 +326,7 @@ function AdminAuditoriums() {
     } catch {
       setInitialDisabled([])
       setInitialMappings({})
+      setInitialLayoutSignature(getLayoutSignature(rows, cols, {}, []))
     }
     setShowModal(true)
   }
@@ -299,15 +340,33 @@ function AdminAuditoriums() {
   const handleSubmit = async () => {
     setSaving(true)
     setError('')
+    const normalizedLayout = {
+      ...seatLayout,
+      totalRows: form.rows,
+      totalColumns: form.cols,
+      seatTypeMappings: normalizeMappings(seatLayout.seatTypeMappings),
+      disabledSeats: normalizeNames(seatLayout.disabledSeats),
+    }
     const payload = {
       name: form.name,
       status: form.status,
-      seatLayout: { ...seatLayout, totalRows: form.rows, totalColumns: form.cols },
+      seatLayout: normalizedLayout,
     }
     try {
       if (editItem) {
-        // Khi sửa phòng: regenerate-seats để rebuild layout + đổi tên/status
-        await auditoriumService.regenerateSeats(editItem.id, payload)
+        const currentLayoutSignature = getLayoutSignature(
+          form.rows,
+          form.cols,
+          normalizedLayout.seatTypeMappings,
+          normalizedLayout.disabledSeats,
+        )
+        const shouldRegenerate = currentLayoutSignature !== initialLayoutSignature
+
+        if (shouldRegenerate) {
+          await auditoriumService.regenerateSeats(editItem.id, payload)
+        } else {
+          await auditoriumService.update(editItem.id, { name: form.name, status: form.status })
+        }
       } else {
         await auditoriumService.create(payload)
       }
@@ -323,6 +382,15 @@ function AdminAuditoriums() {
   const handleSeatLayoutChange = useCallback((layout) => {
     setSeatLayout(layout)
   }, [])
+
+  const currentLayoutSignature = getLayoutSignature(
+    form.rows,
+    form.cols,
+    seatLayout.seatTypeMappings,
+    seatLayout.disabledSeats,
+  )
+  const shouldRegenerateOnSave = !!editItem && currentLayoutSignature !== initialLayoutSignature
+  const actualSeatCount = countActualSeats(form.rows, form.cols, seatLayout.disabledSeats)
 
   return (
     <div>
@@ -373,7 +441,7 @@ function AdminAuditoriums() {
               </div>
               <div className="modal-body">
                 {error && <div className="alert alert-danger">{error}</div>}
-                {editItem && (
+                {shouldRegenerateOnSave && (
                   <div className="alert alert-warning py-2 small">
                     ⚠️ Khi lưu, toàn bộ ghế cũ sẽ được xoá và tạo lại theo layout mới này.
                   </div>
@@ -390,7 +458,7 @@ function AdminAuditoriums() {
                     <select className="form-select bg-dark text-light border-secondary"
                       value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
                       <option value="ACTIVE">ACTIVE</option>
-                      <option value="MAINTENANCE">MAINTENANCE</option>
+                      <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
                       <option value="INACTIVE">INACTIVE</option>
                     </select>
                   </div>
@@ -406,7 +474,7 @@ function AdminAuditoriums() {
                   </div>
                   <div className="col-md-2 d-flex align-items-end">
                     <div className="text-secondary small">
-                      Tổng: <strong className="text-warning">{form.rows * form.cols}</strong> ô
+                      Số ghế: <strong className="text-warning">{actualSeatCount}</strong>
                     </div>
                   </div>
                 </div>
@@ -434,7 +502,11 @@ function AdminAuditoriums() {
               <div className="modal-footer border-secondary">
                 <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Hủy</button>
                 <button className="btn btn-danger" onClick={handleSubmit} disabled={saving || !form.name}>
-                  {saving ? 'Đang Lưu...' : editItem ? '💾 Lưu & Tái Tạo Ghế' : '✅ Tạo & Sinh Ghế'}
+                  {saving
+                    ? 'Đang Lưu...'
+                    : editItem
+                      ? (shouldRegenerateOnSave ? '💾 Lưu & Tái Tạo Ghế' : '💾 Lưu Thay Đổi')
+                      : '✅ Tạo & Sinh Ghế'}
                 </button>
               </div>
             </div>
