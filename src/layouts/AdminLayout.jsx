@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const adminTabs = [
+  { to: '/admin/dashboard', label: 'Tổng quan', icon: '📊' },
   { to: '/admin/profile', label: 'Hồ sơ', icon: '👤' },
   { to: '/admin/users', label: 'Quản lí khách hàng', icon: '👥' },
   { to: '/admin/bookings', label: 'Quản lý Đặt Vé', icon: '🎟️' },
@@ -28,11 +29,15 @@ function AdminLayout() {
   const avatarText = displayName.trim().charAt(0).toUpperCase()
 
   return (
-    <div className="d-flex min-vh-100 bg-body-tertiary text-dark">
+    <div className="d-flex bg-body-tertiary text-dark" style={{ height: '100vh', overflow: 'hidden' }}>
       <aside
         className="d-flex flex-column text-white shadow"
         style={{
           width: isSidebarOpen ? '274px' : '88px',
+          minWidth: isSidebarOpen ? '274px' : '88px',
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
           transition: 'width 0.28s ease',
           background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
         }}
@@ -73,8 +78,8 @@ function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-grow-1 d-flex flex-column min-w-0">
-        <header className="bg-white border-bottom shadow-sm px-3 px-md-4 py-3">
+      <div className="flex-grow-1 d-flex flex-column min-w-0" style={{ height: '100vh', overflow: 'hidden' }}>
+        <header className="bg-white border-bottom shadow-sm px-3 px-md-4 py-3" style={{ position: 'sticky', top: 0, zIndex: 20 }}>
           <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
             <div className="d-flex align-items-center gap-2">
               <button
@@ -105,7 +110,7 @@ function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-grow-1 overflow-auto p-3 p-md-4" style={{ background: 'linear-gradient(180deg, #eef2ff 0%, #f8fafc 48%, #f1f5f9 100%)' }}>
+        <main className="flex-grow-1 overflow-auto p-3 p-md-4" style={{ background: 'linear-gradient(180deg, #eef2ff 0%, #f8fafc 48%, #f1f5f9 100%)', overscrollBehavior: 'contain' }}>
           <Outlet />
         </main>
       </div>
