@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import adminDashboardService from '../services/adminDashboardService'
+import axiosClient from '../api/axiosClient'
 import { parseDashboardResponse, resolveDashboardError } from '../utils/dashboard/parseDashboardResponse'
 
 const ENDPOINTS = {
@@ -36,6 +36,18 @@ const FRIENDLY_LABELS = {
   pdfSummary: 'dữ liệu tổng hợp pdf',
 }
 
+function resolveDashboardBasePath() {
+  const baseURL = String(axiosClient?.defaults?.baseURL || '')
+  const hasApiPrefix = /\/api(\/|$)/.test(baseURL)
+  return hasApiPrefix ? '/admin/dashboard' : '/api/admin/dashboard'
+}
+
+const DASHBOARD_BASE_PATH = resolveDashboardBasePath()
+
+function endpoint(path) {
+  return `${DASHBOARD_BASE_PATH}${path}`
+}
+
 function createSection(endpoint) {
   return {
     endpoint,
@@ -45,7 +57,7 @@ function createSection(endpoint) {
   }
 }
 
-export function useAdminDashboardData({ fromDate, toDate, year, month }) {
+export function useAdminDashboardData({ fromDate, toDate }) {
   const [sections, setSections] = useState({
     keyMetrics: createSection(ENDPOINTS.keyMetrics),
     revenueTrend: createSection(ENDPOINTS.revenueTrend),
@@ -64,24 +76,26 @@ export function useAdminDashboardData({ fromDate, toDate, year, month }) {
   })
 
   const requestMap = useMemo(() => ({
-    keyMetrics: () => adminDashboardService.getKeyMetrics({ fromDate, toDate }),
-    revenueTrend: () => adminDashboardService.getRevenueTrend({ fromDate, toDate, granularity: 'DAY' }),
-    revenueBreakdown: () => adminDashboardService.getRevenueBreakdown({ fromDate, toDate }),
-    showtimeHeatmap: () => adminDashboardService.getShowtimeHeatmap({ fromDate, toDate }),
-    topMovies: () => adminDashboardService.getTopMovies({ fromDate, toDate, limit: 5, metric: 'REVENUE' }),
-    topExtraServices: () => adminDashboardService.getTopExtraServices({ fromDate, toDate, limit: 5 }),
-    auditoriumPerformance: () => adminDashboardService.getAuditoriumPerformance({ fromDate, toDate }),
-    nextWeekForecast: () => adminDashboardService.getNextWeekRevenueForecast(),
-    capacityAlerts: () => adminDashboardService.getCapacityAlerts({ threshold: 0.85, hoursAhead: 48 }),
-    extraServiceSpikes: () => adminDashboardService.getExtraServiceSpikeAlerts({ multiplier: 2.0, lookbackDays: 14 }),
-    liveSales: () => adminDashboardService.getLiveSales({ minutes: 30 }),
-    systemStatus: () => adminDashboardService.getSystemStatus(),
-    excelData: () => adminDashboardService.getExcelReportData({ fromDate, toDate }),
-    pdfSummary: () => adminDashboardService.getMonthlyPdfSummaryData({ year, month }),
-  }), [fromDate, toDate, year, month])
+    keyMetrics: () => axiosClient.get(endpoint('/key-metrics'), { params: { fromDate, toDate } }),
+    revenueTrend: () => axiosClient.get(endpoint('/trends/revenue'), { params: { fromDate, toDate, granularity: 'DAY' } }),
+    revenueBreakdown: () => axiosClient.get(endpoint('/trends/revenue-breakdown'), { params: { fromDate, toDate } }),
+    showtimeHeatmap: () => axiosClient.get(endpoint('/trends/showtime-heatmap'), { params: { fromDate, toDate } }),
+    topMovies: () => axiosClient.get(endpoint('/performance/top-movies'), { params: { fromDate, toDate, limit: 5, metric: 'REVENUE' } }),
+    topExtraServices: () => axiosClient.get(endpoint('/performance/top-extra-services'), { params: { fromDate, toDate, limit: 5 } }),
+    auditoriumPerformance: () => axiosClient.get(endpoint('/performance/auditoriums'), { params: { fromDate, toDate } }),
+    nextWeekForecast: () => axiosClient.get(endpoint('/forecast/next-week-revenue')),
+    capacityAlerts: () => axiosClient.get(endpoint('/forecast/capacity-alerts'), { params: { threshold: 0.85, hoursAhead: 48 } }),
+    extraServiceSpikes: () => axiosClient.get(endpoint('/forecast/extra-service-spikes'), { params: { multiplier: 2.0, lookbackDays: 14 } }),
+    liveSales: () => axiosClient.get(endpoint('/realtime/live-sales'), { params: { minutes: 30 } }),
+    systemStatus: () => axiosClient.get(endpoint('/realtime/system-status')),
+    excelData: () => axiosClient.get(endpoint('/reports/excel-data'), { params: { fromDate, toDate } }),
+  }), [fromDate, toDate])
 
-  const runSection = useCallback(async (key) => {
-    const requestFn = requestMap[key]
+  const runSection = useCallback(async (key, options = {}) => {
+    const requestFn = key === 'pdfSummary'
+      ? () => axiosClient.get(endpoint('/reports/pdf-summary'), { params: { year: options.year, month: options.month } })
+      : requestMap[key]
+
     if (!requestFn) return null
 
     setSections((prev) => ({

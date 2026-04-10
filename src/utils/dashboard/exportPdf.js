@@ -139,11 +139,9 @@ export async function exportDashboardPdf({
     },
   }
 
-  await new Promise((resolve, reject) => {
-    try {
-      pdfMake.createPdf(docDefinition).download(fileName, resolve)
-    } catch (error) {
-      reject(error)
-    }
-  })
+  try {
+    pdfMake.createPdf(docDefinition).download(fileName)
+  } catch (error) {
+    throw error
+  }
 }

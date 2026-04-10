@@ -82,6 +82,8 @@ function SectionState({ section, onRetry, emptyText, children }) {
 function AdminDashboard() {
   const [fromDate, setFromDate] = useState(dateBeforeDays(8))
   const [toDate, setToDate] = useState(todayDateInput())
+  const [filterFromDate, setFilterFromDate] = useState(fromDate)
+  const [filterToDate, setFilterToDate] = useState(toDate)
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [validationError, setValidationError] = useState('')
@@ -89,28 +91,28 @@ function AdminDashboard() {
   const [exportingExcel, setExportingExcel] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [pdfOverride, setPdfOverride] = useState(null)
+  const [showOverview, setShowOverview] = useState(true)
+  const [showHeroBar, setShowHeroBar] = useState(false)
 
   const { sections, runSection, loadDashboard } = useAdminDashboardData({
     fromDate,
     toDate,
-    year,
-    month,
   })
 
-  const dateValidation = useMemo(() => isValidDateRange(fromDate, toDate), [fromDate, toDate])
+  const dateValidation = useMemo(() => isValidDateRange(filterFromDate, filterToDate), [filterFromDate, filterToDate])
+  const appliedDateValidation = useMemo(() => isValidDateRange(fromDate, toDate), [fromDate, toDate])
 
   useEffect(() => {
-    if (!dateValidation.valid) {
-      setValidationError(dateValidation.message)
+    if (!appliedDateValidation.valid) {
+      setValidationError(appliedDateValidation.message)
       return
     }
 
-    setValidationError('')
     void loadDashboard()
-  }, [dateValidation, loadDashboard])
+  }, [appliedDateValidation, loadDashboard])
 
   useEffect(() => {
-    if (!dateValidation.valid) return undefined
+    if (!appliedDateValidation.valid) return undefined
 
     const timerId = window.setInterval(() => {
       void runSection('liveSales')
@@ -120,7 +122,7 @@ function AdminDashboard() {
     return () => {
       window.clearInterval(timerId)
     }
-  }, [dateValidation.valid, runSection])
+  }, [appliedDateValidation.valid, runSection])
 
   const keyMetrics = pdfOverride?.keyMetrics || sections.keyMetrics.data || {}
   const trendSeries = pdfOverride
@@ -184,14 +186,22 @@ function AdminDashboard() {
   const generatedAt = systemStatus.generatedAt
 
   const handleApplyFilter = async () => {
-    const validRange = isValidDateRange(fromDate, toDate)
+    const validRange = isValidDateRange(filterFromDate, filterToDate)
     if (!validRange.valid) {
       setValidationError(validRange.message)
       return
     }
 
     setValidationError('')
-    await loadDashboard()
+
+    const isSameRange = fromDate === filterFromDate && toDate === filterToDate
+    if (isSameRange) {
+      await loadDashboard()
+      return
+    }
+
+    setFromDate(filterFromDate)
+    setToDate(filterToDate)
   }
 
   const buildFallbackTransactions = () => {
@@ -259,7 +269,7 @@ function AdminDashboard() {
 
       let summaryPayload = sections.pdfSummary.data
       if (!summaryPayload) {
-        summaryPayload = await runSection('pdfSummary')
+        summaryPayload = await runSection('pdfSummary', { year, month })
       }
 
       if (summaryPayload) {
@@ -282,75 +292,96 @@ function AdminDashboard() {
 
   return (
     <section className="admin-dashboard">
-      <div className="dashboard-hero">
-        <div className="dashboard-heading">
-          <h2>Tổng quan Admin Dashboard</h2>
-          <p>Dữ liệu theo thời gian thực, có biểu đồ và xuất báo cáo miễn phí.</p>
-        </div>
-
-        <div className="dashboard-filters dashboard-filters-6">
-          <div className="filter-item">
-            <label>Từ ngày</label>
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          </div>
-
-          <div className="filter-item">
-            <label>Đến ngày</label>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-          </div>
-
-          <div className="filter-item">
-            <label>Năm PDF</label>
-            <input
-              type="number"
-              min="2000"
-              max="2100"
-              value={year}
-              onChange={(e) => setYear(toNumber(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-item">
-            <label>Tháng PDF</label>
-            <input
-              type="number"
-              min="1"
-              max="12"
-              value={month}
-              onChange={(e) => setMonth(toNumber(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-item filter-action">
-            <button type="button" className="btn-refresh" onClick={handleApplyFilter}>Làm mới</button>
-          </div>
-
-          <div className="filter-item export-row">
-            <button type="button" className="btn-export" onClick={handleExportExcel} disabled={exportingExcel}>
-              {exportingExcel ? 'Đang xuất Excel...' : 'Xuất Excel'}
-            </button>
-            <button type="button" className="btn-export" onClick={handleExportPdf} disabled={exportingPdf}>
-              {exportingPdf ? 'Đang xuất PDF...' : 'Xuất PDF'}
-            </button>
-          </div>
-        </div>
-
-        {validationError ? <p className="form-error">{validationError}</p> : null}
-        {exportError ? <p className="form-error">{exportError}</p> : null}
-        <p className="panel-sub">Lưu ý: PDF xuất theo toàn bộ tháng đã chọn, còn dashboard hiển thị theo khoảng ngày đang lọc.</p>
+      <div className="dashboard-toolbar">
+        <button
+          type="button"
+          className="btn-overview-toggle"
+          onClick={() => setShowOverview((prev) => !prev)}
+        >
+          {showOverview ? 'Ẩn tổng quan' : 'Hiện tổng quan'}
+        </button>
+        <button
+          type="button"
+          className="btn-overview-toggle"
+          onClick={() => setShowHeroBar((prev) => !prev)}
+        >
+          {showHeroBar ? 'Ẩn bộ lọc & xuất file' : 'Hiện bộ lọc & xuất file'}
+        </button>
       </div>
 
-      <div className="metrics-grid">
-        <SectionState section={sections.keyMetrics} onRetry={() => runSection('keyMetrics')} emptyText="Chưa có KPI.">
-          {kpiCards.map((item) => (
-            <article className="metric-card" key={item.label}>
-              <span className="metric-label">{item.label}</span>
-              <strong className="metric-value">{item.value}</strong>
-              <p className="metric-note">{item.note}</p>
-            </article>
-          ))}
-        </SectionState>
-      </div>
+      {showHeroBar ? (
+        <div className="dashboard-hero">
+          <div className="dashboard-heading">
+            <h2>Tổng quan Admin Dashboard</h2>
+            <p>Dữ liệu theo thời gian thực, có biểu đồ và xuất báo cáo miễn phí.</p>
+          </div>
+
+          <div className="dashboard-filters dashboard-filters-6">
+            <div className="filter-item">
+              <label>Từ ngày</label>
+              <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} />
+            </div>
+
+            <div className="filter-item">
+              <label>Đến ngày</label>
+              <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} />
+            </div>
+
+            <div className="filter-item">
+              <label>Năm PDF</label>
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={year}
+                onChange={(e) => setYear(toNumber(e.target.value))}
+              />
+            </div>
+
+            <div className="filter-item">
+              <label>Tháng PDF</label>
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={month}
+                onChange={(e) => setMonth(toNumber(e.target.value))}
+              />
+            </div>
+
+            <div className="filter-item filter-action">
+              <button type="button" className="btn-refresh" onClick={handleApplyFilter}>Làm mới</button>
+            </div>
+
+            <div className="filter-item export-row">
+              <button type="button" className="btn-export" onClick={handleExportExcel} disabled={exportingExcel}>
+                {exportingExcel ? 'Đang xuất Excel...' : 'Xuất Excel'}
+              </button>
+              <button type="button" className="btn-export" onClick={handleExportPdf} disabled={exportingPdf}>
+                {exportingPdf ? 'Đang xuất PDF...' : 'Xuất PDF'}
+              </button>
+            </div>
+          </div>
+
+          {validationError ? <p className="form-error">{validationError}</p> : null}
+          {exportError ? <p className="form-error">{exportError}</p> : null}
+          <p className="panel-sub">Lưu ý: PDF xuất theo toàn bộ tháng đã chọn, còn dashboard hiển thị theo khoảng ngày đang lọc.</p>
+        </div>
+      ) : null}
+
+      {showOverview ? (
+        <div className="metrics-grid">
+          <SectionState section={sections.keyMetrics} onRetry={() => runSection('keyMetrics')} emptyText="Chưa có KPI.">
+            {kpiCards.map((item) => (
+              <article className="metric-card" key={item.label}>
+                <span className="metric-label">{item.label}</span>
+                <strong className="metric-value">{item.value}</strong>
+                <p className="metric-note">{item.note}</p>
+              </article>
+            ))}
+          </SectionState>
+        </div>
+      ) : null}
 
       <div className="dashboard-grid">
         <article className="panel">
@@ -434,8 +465,20 @@ function AdminDashboard() {
         </article>
 
         <article className="panel">
-          <h3>Top dịch vụ thêm</h3>
-          <p className="panel-sub">Dịch vụ thêm được mua nhiều nhất.</p>
+          <h3>Heatmap suất chiếu & Top dịch vụ thêm</h3>
+          <p className="panel-sub">Khung giờ bán chạy trong tuần và các dịch vụ thêm được mua nhiều nhất.</p>
+          <SectionState section={sections.showtimeHeatmap} onRetry={() => runSection('showtimeHeatmap')} emptyText="Không có dữ liệu heatmap.">
+            <div className="pill-list">
+              {heatmapRows.slice(0, 12).map((item, index) => (
+                <span className="pill" key={`${item.dayOfWeek}-${item.hour}-${index}`}>
+                  {item.dayOfWeek} {item.hour}:00
+                  <strong>{formatInteger(item.soldTickets)}</strong>
+                </span>
+              ))}
+            </div>
+          </SectionState>
+
+          <h3 style={{ marginTop: 18 }}>Top dịch vụ thêm</h3>
           <SectionState section={sections.topExtraServices} onRetry={() => runSection('topExtraServices')} emptyText="Không có top extra services.">
             <div className="pill-list">
               {topExtraServices.map((item) => (
@@ -478,20 +521,7 @@ function AdminDashboard() {
         </article>
 
         <article className="panel">
-          <h3>Heatmap suất chiếu</h3>
-          <p className="panel-sub">Khung giờ có lượng vé bán cao trong tuần.</p>
-          <SectionState section={sections.showtimeHeatmap} onRetry={() => runSection('showtimeHeatmap')} emptyText="Không có dữ liệu heatmap.">
-            <div className="pill-list">
-              {heatmapRows.slice(0, 12).map((item, index) => (
-                <span className="pill" key={`${item.dayOfWeek}-${item.hour}-${index}`}>
-                  {item.dayOfWeek} {item.hour}:00
-                  <strong>{formatInteger(item.soldTickets)}</strong>
-                </span>
-              ))}
-            </div>
-          </SectionState>
-
-          <h3 style={{ marginTop: 18 }}>Hiệu suất phòng chiếu</h3>
+          <h3>Hiệu suất phòng chiếu</h3>
           <SectionState section={sections.auditoriumPerformance} onRetry={() => runSection('auditoriumPerformance')} emptyText="Không có dữ liệu phòng chiếu.">
             <p className="panel-sub">Khoảng lọc hiện tại: {fromDate} đến {toDate}</p>
             <div className="kpi-columns">
