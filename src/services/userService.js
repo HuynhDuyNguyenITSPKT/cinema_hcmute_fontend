@@ -1,9 +1,16 @@
 import axiosClient from '../api/axiosClient'
 
 const userService = {
-  getPageable: async ({ page = 0, size = 10, keyword = '' } = {}) => {
+  getPageable: async ({ page = 0, size = 10, keyword = '', email = '', phone = '', status } = {}) => {
     return axiosClient.get('/users/pageable', {
-      params: { page, size, keyword },
+      params: {
+        page,
+        size,
+        ...(keyword ? { keyword } : {}),
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        ...(typeof status === 'boolean' ? { status } : {}),
+      },
     })
   },
 

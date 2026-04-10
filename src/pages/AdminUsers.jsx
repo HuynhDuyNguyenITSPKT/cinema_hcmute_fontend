@@ -3,6 +3,12 @@ import userService from '../services/userService'
 import { notifyError, notifySuccess } from '../utils/notify'
 
 const PAGE_SIZE = 10
+const EMPTY_FILTERS = {
+  keyword: '',
+  email: '',
+  phone: '',
+  status: 'all',
+}
 
 function buildPagination(currentPage, totalPages) {
   if (totalPages <= 0) {
@@ -34,8 +40,8 @@ function buildPagination(currentPage, totalPages) {
 }
 
 function AdminUsers() {
-  const [inputKeyword, setInputKeyword] = useState('')
-  const [keyword, setKeyword] = useState('')
+  const [inputFilters, setInputFilters] = useState(() => ({ ...EMPTY_FILTERS }))
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS }))
   const [pageData, setPageData] = useState({
     currentItems: [],
     currentPage: 0,
@@ -46,15 +52,21 @@ function AdminUsers() {
   const [error, setError] = useState('')
   const [updatingUserId, setUpdatingUserId] = useState(null)
 
-  const fetchUsers = async (page = 0, searchKeyword = keyword) => {
+  const fetchUsers = async (page = 0, searchFilters = filters) => {
     setLoading(true)
     setError('')
 
     try {
+      const statusFilter =
+        searchFilters.status === 'all' ? undefined : searchFilters.status === 'true'
+
       const response = await userService.getPageable({
         page,
         size: PAGE_SIZE,
-        keyword: searchKeyword,
+        keyword: searchFilters.keyword,
+        email: searchFilters.email,
+        phone: searchFilters.phone,
+        status: statusFilter,
       })
       const data = response?.data || {}
 
@@ -72,15 +84,22 @@ function AdminUsers() {
   }
 
   useEffect(() => {
-    fetchUsers(0, '')
+    fetchUsers(0, EMPTY_FILTERS)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSearch = (e) => {
     e.preventDefault()
-    const trimmed = inputKeyword.trim()
-    setKeyword(trimmed)
-    fetchUsers(0, trimmed)
+
+    const appliedFilters = {
+      keyword: inputFilters.keyword.trim(),
+      email: inputFilters.email.trim(),
+      phone: inputFilters.phone.trim(),
+      status: inputFilters.status,
+    }
+
+    setFilters(appliedFilters)
+    fetchUsers(0, appliedFilters)
   }
 
   const handlePageChange = (nextPage) => {
@@ -88,7 +107,7 @@ function AdminUsers() {
       return
     }
 
-    fetchUsers(nextPage, keyword)
+    fetchUsers(nextPage, filters)
   }
 
   const handleToggleStatus = async (user) => {
@@ -175,17 +194,46 @@ function AdminUsers() {
 
           <div className="card border-light-subtle mb-3">
             <div className="card-body">
-              <form className="row g-2 g-md-3 align-items-center" onSubmit={handleSearch}>
-                <div className="col-12 col-lg-8">
+              <form className="row g-2 g-md-3" onSubmit={handleSearch}>
+                <div className="col-12 col-md-6 col-xl-3">
                   <input
                     type="text"
                     className="form-control"
-                    value={inputKeyword}
-                    onChange={(e) => setInputKeyword(e.target.value)}
-                    placeholder="Tìm theo username / email"
+                    value={inputFilters.keyword}
+                    onChange={(e) => setInputFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+                    placeholder="Từ khóa (username)"
                   />
                 </div>
-                <div className="col-12 col-lg-4 d-grid d-lg-flex justify-content-lg-end gap-2">
+                <div className="col-12 col-md-6 col-xl-3">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={inputFilters.email}
+                    onChange={(e) => setInputFilters((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="Lọc theo email"
+                  />
+                </div>
+                <div className="col-12 col-md-6 col-xl-3">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={inputFilters.phone}
+                    onChange={(e) => setInputFilters((prev) => ({ ...prev, phone: e.target.value }))}
+                    placeholder="Lọc theo số điện thoại"
+                  />
+                </div>
+                <div className="col-12 col-md-6 col-xl-3">
+                  <select
+                    className="form-select"
+                    value={inputFilters.status}
+                    onChange={(e) => setInputFilters((prev) => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+                <div className="col-12 d-grid d-sm-flex justify-content-sm-end gap-2">
                   <button className="btn btn-primary" type="submit" disabled={loading}>
                     {loading ? 'Đang tìm...' : 'Tìm kiếm'}
                   </button>
@@ -193,9 +241,11 @@ function AdminUsers() {
                     className="btn btn-outline-secondary"
                     type="button"
                     onClick={() => {
-                      setInputKeyword('')
-                      setKeyword('')
-                      fetchUsers(0, '')
+                      const resetFilters = { ...EMPTY_FILTERS }
+
+                      setInputFilters(resetFilters)
+                      setFilters(resetFilters)
+                      fetchUsers(0, resetFilters)
                     }}
                     disabled={loading}
                   >
@@ -212,11 +262,11 @@ function AdminUsers() {
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
-                  <th className="text-center" style={{ width: '72px' }}>STT</th>
                   <th>ID</th>
                   <th>Username</th>
                   <th>Họ tên</th>
                   <th>Email</th>
+                  <th>Số điện thoại</th>
                   <th>Role</th>
                   <th>Trạng thái</th>
                   <th className="text-end">Thao tác</th>
@@ -231,13 +281,13 @@ function AdminUsers() {
                   </tr>
                 ) : null}
 
-                {pageData.currentItems.map((item, index) => (
+                {pageData.currentItems.map((item) => (
                   <tr key={item.userId}>
-                    <td className="text-center fw-semibold">{pageData.currentPage * PAGE_SIZE + index + 1}</td>
                     <td>{item.userId ?? '-'}</td>
                     <td className="fw-semibold">{item.username}</td>
                     <td>{item.fullName}</td>
                     <td>{item.email}</td>
+                    <td>{item.phone ?? '-'}</td>
                     <td>
                       <span className="badge text-bg-secondary">{item.role}</span>
                     </td>
@@ -268,7 +318,7 @@ function AdminUsers() {
 
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mt-3">
             <p className="text-secondary mb-0">
-              Trang {pageData.currentPage + 1} / {Math.max(pageData.totalPages, 1)} - Tổng bản ghi: {pageData.totalItems}
+              Trang {pageData.currentPage + 1} / {Math.max(pageData.totalPages, 1)}
             </p>
 
             <div className="d-flex flex-wrap gap-2 align-items-center">
