@@ -23,7 +23,6 @@ import Register from '../pages/Register'
 import Home from '../pages/Home'
 import UserProfile from '../pages/UserProfile'
 import ForgotPassword from '../pages/ForgotPassword'
-import OAuth2Callback from '../pages/OAuth2Callback'
 import PaymentCallback from '../pages/PaymentCallback'
 import RoleBasedRedirect from './RoleBasedRedirect'
 // New Customer Pages
@@ -42,7 +41,6 @@ function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/oauth2/callback" element={<OAuth2Callback />} />
       </Route>
 
       {/* Public routes: Home, Movie browsing, Checkout */}

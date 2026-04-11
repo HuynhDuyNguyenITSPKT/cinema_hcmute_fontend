@@ -36,6 +36,7 @@ Tạo file `.env` ở thư mục gốc (hoặc dùng file sẵn có) với nội
 
 ```env
 VITE_API_URL=http://localhost:8080/api
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
 
 ### Chạy local
@@ -117,7 +118,6 @@ src/
 	- `/login`
 	- `/register`
 	- `/forgot-password`
-	- `/oauth2/callback`
 
 - Public route:
 	- `/` (Home)
@@ -159,11 +159,16 @@ src/
 
 ### 7.3 Đăng nhập Google
 
-Hiện có 2 cách xử lý token trả về từ backend OAuth:
-- Tại `Login.jsx`, đọc query param `accessToken`, `refreshToken`.
-- Tại `OAuth2Callback.jsx`, đọc query param tương tự rồi `loginWithTokens`.
+`Login.jsx` dùng Google Identity trong React để lấy `credential` (ID token), sau đó gửi về backend:
 
-Sau khi nhận token:
+```json
+POST /api/auth/google
+{
+	"tokenId": "..."
+}
+```
+
+Sau khi backend trả token giống login thường:
 1. Lưu token.
 2. Gọi `/auth/me`.
 3. Điều hướng theo role.
@@ -191,6 +196,7 @@ Sau khi nhận token:
 
 `src/services/authService.js` đang dùng các endpoint:
 - `POST /auth/login`
+- `POST /auth/google`
 - `POST /auth/register`
 - `POST /auth/verify-otp`
 - `POST /auth/resend-otp`
@@ -216,7 +222,7 @@ Sau khi nhận token:
 - `src/layouts/UserLayout.jsx`: bọc `PublicLayout` cho user area.
 
 - `src/pages/Home.jsx`: trang chủ public (đang dùng dữ liệu mẫu phim).
-- `src/pages/Login.jsx`: đăng nhập thường + nút Google OAuth.
+- `src/pages/Login.jsx`: đăng nhập thường + Google Login (ID token -> `/auth/google`).
 - `src/pages/Register.jsx`: đăng ký và xác thực OTP.
 - `src/pages/ForgotPassword.jsx`: xin OTP + đặt lại mật khẩu.
 - `src/pages/AdminUsers.jsx`: danh sách user có phân trang/tìm kiếm và bật tắt trạng thái.
@@ -248,7 +254,7 @@ Sau khi nhận token:
 
 ## 11. Lưu ý quan trọng khi bảo trì
 
-- Đang có cả route callback OAuth riêng (`/oauth2/callback`) và logic đọc token ngay trong `Login.jsx`.
+- Google Login cần cấu hình đúng `VITE_GOOGLE_CLIENT_ID` để render nút Google.
 - `getDefaultPathByRole('USER')` hiện trả về `/`, trong khi user area có route `/user/profile`.
 - `authService.refreshToken` đã có nhưng chưa được dùng trong interceptor để tự refresh access token.
 
