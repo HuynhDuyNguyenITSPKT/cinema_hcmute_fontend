@@ -1,5 +1,6 @@
 import pdfMake from 'pdfmake/build/pdfmake'
 import pdfFonts from 'pdfmake/build/vfs_fonts'
+import { normalizePercent } from './formatters'
 
 pdfMake.vfs = pdfFonts.vfs
 
@@ -18,6 +19,22 @@ function currency(value) {
 
 function integer(value) {
   return new Intl.NumberFormat('vi-VN').format(numberValue(value))
+}
+
+function percent(value) {
+  return `${normalizePercent(value).toFixed(2)}%`
+}
+
+function headerCell(text) {
+  return {
+    text,
+    style: 'tableHeader',
+  }
+}
+
+function zebraFillColor(rowIndex) {
+  if (rowIndex === 0) return '#1e3a8a'
+  return rowIndex % 2 === 0 ? '#f8fafc' : null
 }
 
 /**
@@ -40,26 +57,72 @@ export async function exportDashboardPdf({
     ? summaryData.auditoriumPerformance
     : []
 
+  const generatedAt = new Date().toLocaleString('vi-VN')
+
   const docDefinition = {
     pageSize: 'A4',
     pageMargins: [28, 30, 28, 30],
+    footer: (currentPage, pageCount) => ({
+      columns: [
+        { text: `Generated: ${generatedAt}`, alignment: 'left', style: 'footerText' },
+        { text: `Trang ${currentPage}/${pageCount}`, alignment: 'right', style: 'footerText' },
+      ],
+      margin: [28, 0, 28, 16],
+    }),
     content: [
-      { text: 'BÁO CÁO TỔNG QUAN ADMIN', style: 'title' },
-      { text: `Tháng: ${String(month).padStart(2, '0')}/${year}`, style: 'subtitle', margin: [0, 2, 0, 14] },
+      {
+        table: {
+          widths: ['*', 'auto'],
+          body: [[
+            {
+              stack: [
+                { text: 'CINEMA HCMUTE', style: 'brand' },
+                { text: 'BAO CAO TONG QUAN ADMIN', style: 'title' },
+                { text: `Ky bao cao: Thang ${String(month).padStart(2, '0')}/${year}`, style: 'subtitle' },
+              ],
+              border: [false, false, false, false],
+            },
+            {
+              text: 'CONFIDENTIAL',
+              style: 'badge',
+              border: [false, false, false, false],
+              margin: [0, 12, 0, 0],
+            },
+          ]],
+        },
+        layout: {
+          fillColor: () => '#eff6ff',
+          paddingLeft: () => 14,
+          paddingRight: () => 14,
+          paddingTop: () => 12,
+          paddingBottom: () => 12,
+        },
+        margin: [0, 0, 0, 16],
+      },
 
       { text: 'Chỉ số KPI', style: 'sectionHeader' },
       {
         table: {
+          headerRows: 1,
           widths: ['*', '*'],
           body: [
+            [headerCell('Chi so'), headerCell('Gia tri')],
             ['Doanh thu', currency(keyMetrics.revenue)],
             ['Vé đã bán', integer(keyMetrics.soldTickets)],
-            ['Tỷ lệ lấp đầy', `${keyMetrics.occupancyRate ?? 0}%`],
+            ['Tỷ lệ lấp đầy', percent(keyMetrics.occupancyRate)],
             ['Tổng đơn hàng', integer(keyMetrics.totalBookings)],
           ],
         },
-        layout: 'lightHorizontalLines',
-        margin: [0, 2, 0, 12],
+        layout: {
+          fillColor: (rowIndex) => zebraFillColor(rowIndex),
+          hLineColor: () => '#dbeafe',
+          vLineColor: () => '#dbeafe',
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
+        margin: [0, 2, 0, 14],
       },
 
       { text: 'Top phim', style: 'sectionHeader' },
@@ -68,7 +131,7 @@ export async function exportDashboardPdf({
           headerRows: 1,
           widths: [26, '*', 90],
           body: [
-            ['#', 'Tên phim', 'Doanh thu'],
+            [headerCell('#'), headerCell('Ten phim'), headerCell('Doanh thu')],
             ...topMovies.slice(0, 10).map((item, index) => [
               String(index + 1),
               item.title || 'N/A',
@@ -76,8 +139,16 @@ export async function exportDashboardPdf({
             ]),
           ],
         },
-        layout: 'lightHorizontalLines',
-        margin: [0, 2, 0, 12],
+        layout: {
+          fillColor: (rowIndex) => zebraFillColor(rowIndex),
+          hLineColor: () => '#dbeafe',
+          vLineColor: () => '#dbeafe',
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
+        margin: [0, 2, 0, 14],
       },
 
       { text: 'Top dịch vụ thêm', style: 'sectionHeader' },
@@ -86,7 +157,7 @@ export async function exportDashboardPdf({
           headerRows: 1,
           widths: [26, '*', 72, 72],
           body: [
-            ['#', 'Dịch vụ', 'Số lượng', 'Doanh thu'],
+            [headerCell('#'), headerCell('Dich vu'), headerCell('So luong'), headerCell('Doanh thu')],
             ...topExtraServices.slice(0, 10).map((item, index) => [
               String(index + 1),
               item.name || 'N/A',
@@ -95,8 +166,16 @@ export async function exportDashboardPdf({
             ]),
           ],
         },
-        layout: 'lightHorizontalLines',
-        margin: [0, 2, 0, 12],
+        layout: {
+          fillColor: (rowIndex) => zebraFillColor(rowIndex),
+          hLineColor: () => '#dbeafe',
+          vLineColor: () => '#dbeafe',
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
+        margin: [0, 2, 0, 14],
       },
 
       { text: 'Hiệu suất phòng chiếu', style: 'sectionHeader' },
@@ -105,32 +184,60 @@ export async function exportDashboardPdf({
           headerRows: 1,
           widths: [26, '*', 72],
           body: [
-            ['#', 'Phòng', 'Occupancy'],
+            [headerCell('#'), headerCell('Phong'), headerCell('Occupancy')],
             ...auditoriumPerformance.slice(0, 12).map((item, index) => [
               String(index + 1),
               item.name || 'N/A',
-              `${item.occupancyRate ?? 0}%`,
+              percent(item.occupancyRate),
             ]),
           ],
         },
-        layout: 'lightHorizontalLines',
+        layout: {
+          fillColor: (rowIndex) => zebraFillColor(rowIndex),
+          hLineColor: () => '#dbeafe',
+          vLineColor: () => '#dbeafe',
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
       },
     ],
     styles: {
-      title: {
-        fontSize: 16,
+      brand: {
+        fontSize: 10,
         bold: true,
-        color: '#111827',
+        color: '#1d4ed8',
+      },
+      title: {
+        fontSize: 18,
+        bold: true,
+        color: '#0f172a',
+        margin: [0, 3, 0, 3],
       },
       subtitle: {
         fontSize: 11,
-        color: '#4b5563',
+        color: '#334155',
       },
       sectionHeader: {
         fontSize: 12,
         bold: true,
         color: '#0f172a',
-        margin: [0, 6, 0, 4],
+        margin: [0, 7, 0, 5],
+      },
+      tableHeader: {
+        bold: true,
+        color: '#ffffff',
+        fontSize: 10,
+      },
+      badge: {
+        color: '#1e3a8a',
+        bold: true,
+        fontSize: 9,
+      },
+      footerText: {
+        fontSize: 8,
+        color: '#64748b',
       },
     },
     defaultStyle: {

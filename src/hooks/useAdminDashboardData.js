@@ -92,9 +92,20 @@ export function useAdminDashboardData({ fromDate, toDate }) {
   }), [fromDate, toDate])
 
   const runSection = useCallback(async (key, options = {}) => {
-    const requestFn = key === 'pdfSummary'
-      ? () => axiosClient.get(endpoint('/reports/pdf-summary'), { params: { year: options.year, month: options.month } })
-      : requestMap[key]
+    let requestFn = requestMap[key]
+
+    if (key === 'pdfSummary') {
+      requestFn = () => axiosClient.get(endpoint('/reports/pdf-summary'), { params: { year: options.year, month: options.month } })
+    }
+
+    if (key === 'excelData' && options.fromDate && options.toDate) {
+      requestFn = () => axiosClient.get(endpoint('/reports/excel-data'), {
+        params: {
+          fromDate: options.fromDate,
+          toDate: options.toDate,
+        },
+      })
+    }
 
     if (!requestFn) return null
 
