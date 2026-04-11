@@ -17,10 +17,70 @@ function truncateText(text, maxLength = 95) {
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
+function parseDateOnly(dateString) {
+  const raw = String(dateString || '').trim()
+  if (!raw) return null
+
+  const dateOnlyPart = raw.split('T')[0].split(' ')[0]
+
+  const isoLikeMatch = dateOnlyPart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (isoLikeMatch) {
+    const year = Number(isoLikeMatch[1])
+    const month = Number(isoLikeMatch[2])
+    const day = Number(isoLikeMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const dmyMatch = dateOnlyPart.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1])
+    const month = Number(dmyMatch[2])
+    const year = Number(dmyMatch[3])
+    const parsed = new Date(year, month - 1, day, 0, 0, 0, 0)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const fallback = new Date(raw)
+  if (Number.isNaN(fallback.getTime())) {
+    return null
+  }
+
+  return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate(), 0, 0, 0, 0)
+}
+
+function sortMoviesByNearestReleaseDate(items) {
+  const now = new Date()
+  const todayStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+  return items
+    .slice()
+    .sort((a, b) => {
+      const releaseTimeA = parseDateOnly(a?.releaseDate)?.getTime()
+      const releaseTimeB = parseDateOnly(b?.releaseDate)?.getTime()
+      const releaseDistanceA = Number.isFinite(releaseTimeA)
+        ? Math.abs(releaseTimeA - todayStartTime)
+        : Number.MAX_SAFE_INTEGER
+      const releaseDistanceB = Number.isFinite(releaseTimeB)
+        ? Math.abs(releaseTimeB - todayStartTime)
+        : Number.MAX_SAFE_INTEGER
+
+      if (releaseDistanceA !== releaseDistanceB) {
+        return releaseDistanceA - releaseDistanceB
+      }
+
+      if (Number.isFinite(releaseTimeA) && Number.isFinite(releaseTimeB) && releaseTimeA !== releaseTimeB) {
+        return releaseTimeA - releaseTimeB
+      }
+
+      return String(a?.title ?? '').localeCompare(String(b?.title ?? ''), 'vi')
+    })
+}
+
 function formatReleaseDate(dateString) {
   if (!dateString) return '-'
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) return dateString
+  const date = parseDateOnly(dateString)
+  if (!date || Number.isNaN(date.getTime())) return dateString
   return date.toLocaleDateString('vi-VN')
 }
 
@@ -84,7 +144,8 @@ function Home() {
         const res = await publicService.searchMovies({ page: 0, size: PREVIEW_SIZE, status: movieStatusFilter })
         const items = res?.data?.currentItems ?? []
         if (active) {
-          setMovies(Array.isArray(items) ? items : [])
+          const normalizedItems = Array.isArray(items) ? items : []
+          setMovies(sortMoviesByNearestReleaseDate(normalizedItems))
         }
       } catch (err) {
         if (active) {
