@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import auditoriumService from '../services/auditoriumService'
 import axiosClient from '../api/axiosClient'
+import { notifyError, notifySuccess } from '../utils/notify'
 
 const PALETTE = [
   { bg: '#1e293b', border: '#475569' }, // index 0 - Gray (default slot)
@@ -333,8 +334,13 @@ function AdminAuditoriums() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Xóa phòng chiếu này?')) return
-    await auditoriumService.delete(id).catch(err => alert(err?.message))
-    load()
+    try {
+      await auditoriumService.delete(id)
+      notifySuccess('Xóa phòng chiếu thành công')
+      load()
+    } catch (err) {
+      notifyError(err?.message || 'Không thể xóa phòng chiếu')
+    }
   }
 
   const handleSubmit = async () => {
@@ -370,10 +376,13 @@ function AdminAuditoriums() {
       } else {
         await auditoriumService.create(payload)
       }
+      notifySuccess(editItem ? 'Cập nhật phòng chiếu thành công' : 'Tạo phòng chiếu thành công')
       setShowModal(false)
       load()
     } catch (err) {
-      setError(err?.message || 'Lỗi không xác định')
+      const message = err?.message || 'Lỗi không xác định'
+      setError(message)
+      notifyError(message)
     } finally {
       setSaving(false)
     }

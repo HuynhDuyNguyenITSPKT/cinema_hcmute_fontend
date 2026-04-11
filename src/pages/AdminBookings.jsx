@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import bookingService from '../services/bookingService'
+import { notifyError, notifySuccess } from '../utils/notify'
 
 const STATUS_OPTS = ['', 'RESERVED', 'PENDING_APPROVAL', 'SUCCESS', 'CANCELLED']
 const STATUS_BADGE = {
@@ -32,9 +33,10 @@ function AdminBookings() {
     if (!window.confirm('Duyệt đơn đặt vé Khách Đoàn này?')) return
     try {
       await bookingService.approveBooking(id)
+      notifySuccess('Duyệt booking thành công')
       load()
     } catch (err) {
-      alert(err?.message || 'Không thể duyệt đơn này.')
+      notifyError(err?.message || 'Không thể duyệt đơn này.')
     }
   }
 
@@ -42,9 +44,10 @@ function AdminBookings() {
     if (!window.confirm('Hủy đơn đặt vé này?')) return
     try {
       await bookingService.adminCancelBooking(id)
+      notifySuccess('Hủy booking thành công')
       load()
     } catch (err) {
-      alert(err?.message || 'Không thể hủy.')
+      notifyError(err?.message || 'Không thể hủy.')
     }
   }
 
@@ -60,10 +63,13 @@ function AdminBookings() {
         note: createForm.note,
       }
       await bookingService.adminCreateBooking(payload)
+      notifySuccess('Tạo booking ngoại lệ thành công')
       setShowCreateModal(false)
       load()
     } catch (err) {
-      setError(err?.message || 'Lỗi tạo booking.')
+      const message = err?.message || 'Lỗi tạo booking.'
+      setError(message)
+      notifyError(message)
     } finally {
       setSaving(false)
     }
