@@ -1,4 +1,22 @@
 export function toNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return 0
+
+    // Support numeric strings like "85%", "0,85" and "1,234.56".
+    const withoutPercent = trimmed.replace(/%/g, '')
+    const normalized = withoutPercent.includes('.')
+      ? withoutPercent.replace(/,/g, '')
+      : withoutPercent.replace(',', '.')
+
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
 }

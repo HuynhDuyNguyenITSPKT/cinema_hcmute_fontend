@@ -33,14 +33,28 @@ import './AdminDashboard.css'
 
 const CHART_COLORS = ['#ea580c', '#0f766e', '#2563eb', '#d97706', '#7c3aed']
 
-function todayDateInput() {
-  return new Date().toISOString().slice(0, 10)
+function monthStartDateInput() {
+  const d = new Date()
+  d.setDate(1)
+  return d.toISOString().slice(0, 10)
 }
 
-function dateBeforeDays(days) {
+function monthEndDateInput() {
   const d = new Date()
-  d.setDate(d.getDate() - days)
+  d.setMonth(d.getMonth() + 1, 0)
   return d.toISOString().slice(0, 10)
+}
+
+function monthRangeByYearMonth(year, month) {
+  const y = Number(year)
+  const m = Number(month)
+  const from = new Date(y, m - 1, 1)
+  const to = new Date(y, m, 0)
+
+  return {
+    fromDate: from.toISOString().slice(0, 10),
+    toDate: to.toISOString().slice(0, 10),
+  }
 }
 
 function formatAuditoriumStatusLabel(status) {
@@ -80,8 +94,8 @@ function SectionState({ section, onRetry, emptyText, children }) {
 }
 
 function AdminDashboard() {
-  const [fromDate, setFromDate] = useState(dateBeforeDays(8))
-  const [toDate, setToDate] = useState(todayDateInput())
+  const [fromDate, setFromDate] = useState(monthStartDateInput())
+  const [toDate, setToDate] = useState(monthEndDateInput())
   const [filterFromDate, setFilterFromDate] = useState(fromDate)
   const [filterToDate, setFilterToDate] = useState(toDate)
   const [year, setYear] = useState(new Date().getFullYear())
@@ -219,28 +233,31 @@ function AdminDashboard() {
     setExportingExcel(true)
 
     try {
-      const validRange = isValidDateRange(fromDate, toDate)
-      if (!validRange.valid) {
-        setExportError(validRange.message)
+      const validMonth = isValidYearMonth(year, month)
+      if (!validMonth.valid) {
+        setExportError(validMonth.message)
         return
       }
 
-      let excelPayload = sections.excelData.data
-      if (!excelPayload) {
-        excelPayload = await runSection('excelData')
-      }
+      const { fromDate: excelFromDate, toDate: excelToDate } = monthRangeByYearMonth(year, month)
+      const excelPayload = await runSection('excelData', {
+        fromDate: excelFromDate,
+        toDate: excelToDate,
+      })
 
       const transactions = listByKey(excelPayload, 'transactions')
       const sourceTransactions = transactions.length ? transactions : buildFallbackTransactions()
 
-      exportDashboardExcel({
-        fileName: `admin-dashboard-${fromDate}-to-${toDate}.xlsx`,
+      await exportDashboardExcel({
+        fileName: `admin-dashboard-${year}-${String(month).padStart(2, '0')}.xlsx`,
         transactions: sourceTransactions,
         kpiSummary: [
           { metric: 'Doanh thu', value: keyMetrics.revenue },
           { metric: 'Vé đã bán', value: keyMetrics.soldTickets },
           { metric: 'Tỷ lệ lấp đầy (%)', value: normalizePercent(keyMetrics.occupancyRate) },
           { metric: 'Tổng đơn hàng', value: keyMetrics.totalBookings },
+          { metric: 'Từ ngày', value: excelFromDate },
+          { metric: 'Đến ngày', value: excelToDate },
         ],
         topMovies: topMoviesChart,
         topExtraServices: topExtraServices.map((item) => ({
@@ -267,10 +284,7 @@ function AdminDashboard() {
         return
       }
 
-      let summaryPayload = sections.pdfSummary.data
-      if (!summaryPayload) {
-        summaryPayload = await runSection('pdfSummary', { year, month })
-      }
+      const summaryPayload = await runSection('pdfSummary', { year, month })
 
       if (summaryPayload) {
         setPdfOverride(summaryPayload)
@@ -365,7 +379,7 @@ function AdminDashboard() {
 
           {validationError ? <p className="form-error">{validationError}</p> : null}
           {exportError ? <p className="form-error">{exportError}</p> : null}
-          <p className="panel-sub">Lưu ý: PDF xuất theo toàn bộ tháng đã chọn, còn dashboard hiển thị theo khoảng ngày đang lọc.</p>
+          <p className="panel-sub">Lưu ý: Excel và PDF xuất theo toàn bộ tháng đã chọn, còn dashboard hiển thị theo khoảng ngày đang lọc.</p>
         </div>
       ) : null}
 

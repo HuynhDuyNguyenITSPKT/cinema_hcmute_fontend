@@ -1,50 +1,127 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 function normalizeRows(value) {
   return Array.isArray(value) ? value : []
-}
-
-function withColumnWidths(rows, headers) {
-  const widths = []
-
-  headers.forEach((header, index) => {
-    widths[index] = Math.max(widths[index] || 10, Math.min(50, String(header).length + 4))
-  })
-
-  rows.forEach((row) => {
-    row.forEach((cell, index) => {
-      const text = String(cell ?? '')
-      widths[index] = Math.max(widths[index] || 10, Math.min(50, text.length + 2))
-    })
-  })
-
-  return widths.map((wch) => ({ wch }))
 }
 
 function toRowValues(items, columns) {
   return items.map((item) => columns.map((col) => (item?.[col.key] ?? '')))
 }
 
-function makeSheet(rows, columns) {
-  const headers = columns.map((col) => col.header)
-  const values = toRowValues(normalizeRows(rows), columns)
-  const data = [headers, ...values]
+function autoSizeColumns(worksheet, min = 12, max = 42) {
+  worksheet.columns.forEach((column) => {
+    let widest = min
 
-  const sheet = XLSX.utils.aoa_to_sheet(data)
-  sheet['!cols'] = withColumnWidths(data, headers)
-  sheet['!autofilter'] = { ref: `A1:${String.fromCharCode(64 + headers.length)}1` }
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const raw = cell.value
+      const text = raw == null
+        ? ''
+        : typeof raw === 'object' && raw.richText
+          ? raw.richText.map((part) => part.text).join('')
+          : String(raw)
+      widest = Math.max(widest, Math.min(max, text.length + 2))
+    })
 
-  return sheet
+    column.width = widest
+  })
 }
 
-export function exportDashboardExcel({
+function styleHeaderRow(row) {
+  row.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E3A8A' },
+    }
+    cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+    }
+  })
+}
+
+function styleDataRows(worksheet, fromRow, toRow) {
+  for (let r = fromRow; r <= toRow; r += 1) {
+    const row = worksheet.getRow(r)
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: 'middle', horizontal: 'left' }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      }
+    })
+  }
+}
+
+function buildSheet(workbook, sheetName, title, rows, columns) {
+  const worksheet = workbook.addWorksheet(sheetName)
+  const headers = columns.map((col) => col.header)
+  const values = toRowValues(normalizeRows(rows), columns)
+
+  worksheet.columns = columns.map((col) => ({ key: col.key, header: col.header }))
+
+  worksheet.mergeCells(1, 1, 1, headers.length)
+  const titleCell = worksheet.getCell(1, 1)
+  titleCell.value = title
+  titleCell.font = { bold: true, size: 15, color: { argb: 'FF0F172A' } }
+  titleCell.alignment = { horizontal: 'left', vertical: 'middle' }
+
+  worksheet.mergeCells(2, 1, 2, headers.length)
+  const subtitleCell = worksheet.getCell(2, 1)
+  subtitleCell.value = `Generated at: ${new Date().toLocaleString('vi-VN')}`
+  subtitleCell.font = { italic: true, size: 10, color: { argb: 'FF64748B' } }
+  subtitleCell.alignment = { horizontal: 'left', vertical: 'middle' }
+
+  const headerRow = worksheet.getRow(4)
+  headerRow.values = headers
+  styleHeaderRow(headerRow)
+
+  values.forEach((rowValues, index) => {
+    worksheet.getRow(5 + index).values = rowValues
+  })
+
+  const endDataRow = 4 + Math.max(values.length, 1)
+  styleDataRows(worksheet, 5, endDataRow)
+  worksheet.autoFilter = {
+    from: { row: 4, column: 1 },
+    to: { row: 4, column: headers.length },
+  }
+
+  worksheet.views = [{ state: 'frozen', ySplit: 4 }]
+  autoSizeColumns(worksheet)
+}
+
+function downloadWorkbookBuffer(buffer, fileName) {
+  const blob = new Blob([
+    buffer,
+  ], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName || 'admin-dashboard-report.xlsx'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportDashboardExcel({
   fileName,
   transactions,
   kpiSummary,
   topMovies,
   topExtraServices,
 }) {
-  const wb = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'Cinema HCMUTE Admin Dashboard'
+  workbook.created = new Date()
 
   const transactionCols = [
     { key: 'bookingId', header: 'Mã đặt vé' },
@@ -74,10 +151,11 @@ export function exportDashboardExcel({
     { key: 'revenue', header: 'Doanh thu' },
   ]
 
-  XLSX.utils.book_append_sheet(wb, makeSheet(transactions, transactionCols), 'Transactions')
-  XLSX.utils.book_append_sheet(wb, makeSheet(kpiSummary, kpiCols), 'KPI Summary')
-  XLSX.utils.book_append_sheet(wb, makeSheet(topMovies, movieCols), 'Top Movies')
-  XLSX.utils.book_append_sheet(wb, makeSheet(topExtraServices, extraCols), 'Top Extra Services')
+  buildSheet(workbook, 'Transactions', 'Danh sach giao dich', transactions, transactionCols)
+  buildSheet(workbook, 'KPI Summary', 'Tong hop KPI', kpiSummary, kpiCols)
+  buildSheet(workbook, 'Top Movies', 'Top phim theo doanh thu', topMovies, movieCols)
+  buildSheet(workbook, 'Top Extra Services', 'Top dich vu them', topExtraServices, extraCols)
 
-  XLSX.writeFile(wb, fileName || 'admin-dashboard-report.xlsx')
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadWorkbookBuffer(buffer, fileName || 'admin-dashboard-report.xlsx')
 }
