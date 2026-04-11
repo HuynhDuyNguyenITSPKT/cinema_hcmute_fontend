@@ -35,8 +35,8 @@ const authService = {
     return axiosClient.get('/auth/me')
   },
 
-  exchangeOAuthCode: async (code) => {
-    return axiosClient.post('/auth/oauth2/exchange', { code })
+  loginWithGoogle: async (tokenId) => {
+    return axiosClient.post('/auth/google', { tokenId })
   },
 
   logout: async (refreshToken) => {

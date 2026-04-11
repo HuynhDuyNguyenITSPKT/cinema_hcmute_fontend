@@ -13,6 +13,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isInitializing, setIsInitializing] = useState(true)
 
+  const getTokenDataOrThrow = (response, fallbackMessage) => {
+    const tokenData = response?.data
+
+    if (!tokenData?.accessToken) {
+      throw new Error(response?.message || fallbackMessage)
+    }
+
+    return tokenData
+  }
+
   useEffect(() => {
     const initializeAuth = async () => {
       const accessToken = getAccessToken()
@@ -38,11 +48,7 @@ export function AuthProvider({ children }) {
 
   const login = async ({ username, password }) => {
     const loginResponse = await authService.login(username, password)
-    const tokenData = loginResponse?.data
-
-    if (!tokenData?.accessToken) {
-      throw new Error(loginResponse?.message || 'Đăng nhập thất bại.')
-    }
+    const tokenData = getTokenDataOrThrow(loginResponse, 'Đăng nhập thất bại.')
 
     setTokens(tokenData)
 
@@ -73,13 +79,12 @@ export function AuthProvider({ children }) {
     return profile
   }
 
-  const loginWithOAuthCode = async (code) => {
-    const exchangeResponse = await authService.exchangeOAuthCode(code)
-    const tokenData = exchangeResponse?.data
-
-    if (!tokenData?.accessToken) {
-      throw new Error(exchangeResponse?.message || 'Đổi mã đăng nhập Google thất bại.')
-    }
+  const loginWithGoogleToken = async (tokenId) => {
+    const googleLoginResponse = await authService.loginWithGoogle(tokenId)
+    const tokenData = getTokenDataOrThrow(
+      googleLoginResponse,
+      'Đăng nhập Google thất bại.'
+    )
 
     return loginWithTokens(tokenData.accessToken, tokenData.refreshToken)
   }
@@ -116,7 +121,7 @@ export function AuthProvider({ children }) {
     isInitializing,
     login,
     loginWithTokens,
-    loginWithOAuthCode,
+    loginWithGoogleToken,
     refreshProfile,
     setCurrentUser,
     logout,

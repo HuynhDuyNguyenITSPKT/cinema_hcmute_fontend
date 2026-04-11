@@ -1,38 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { GoogleLogin } from '@react-oauth/google'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { notifyError } from '../utils/notify'
 import { getDefaultPathByRole } from '../utils/roleRoute'
 
 function Login() {
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, isAuthenticated, isInitializing, user } = useAuth()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const { login, loginWithGoogleToken, isAuthenticated, isInitializing, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const latestOAuthErrorRef = useRef('')
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const stateError = location.state?.error || ''
-    const queryError = params.get('error_description') || params.get('error') || ''
-    const callbackError = stateError || queryError
-
-    if (callbackError) {
-      const normalizedError = callbackError.trim()
-
-      if (normalizedError && latestOAuthErrorRef.current !== normalizedError) {
-        latestOAuthErrorRef.current = normalizedError
-        setError(normalizedError)
-
-        if (!stateError) {
-          notifyError(normalizedError, 'Đăng nhập Google thất bại')
-        }
-      }
-      return
-    }
-
     if (!isInitializing && isAuthenticated) {
       const rolePath = getDefaultPathByRole(user?.role)
       const redirectPath = location.state?.from?.pathname || rolePath
@@ -41,7 +23,6 @@ function Login() {
   }, [
     isAuthenticated,
     isInitializing,
-    location.search,
     location.state,
     navigate,
     user?.role,
@@ -65,15 +46,32 @@ function Login() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
-    const backendOrigin = apiBaseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')
-    const googleAuthUrl = new URL(`${backendOrigin}/oauth2/authorization/google`)
+  const handleGoogleLoginSuccess = async (credentialResponse) => {
+    const tokenId = credentialResponse?.credential
 
-    // Hint backend where frontend callback lives; backends that don't use this param will ignore it.
-    googleAuthUrl.searchParams.set('redirect_uri', `${window.location.origin}/oauth2/callback`)
+    if (!tokenId) {
+      setError('Không thể lấy token từ Google. Vui lòng thử lại.')
+      return
+    }
 
-    window.location.href = googleAuthUrl.toString()
+    setGoogleLoading(true)
+    setError('')
+
+    try {
+      const profile = await loginWithGoogleToken(tokenId)
+      const rolePath = getDefaultPathByRole(profile?.role)
+      const redirectPath = location.state?.from?.pathname || rolePath
+      navigate(redirectPath, { replace: true })
+    } catch (err) {
+      const message = err?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.'
+      setError(message)
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  const handleGoogleLoginError = () => {
+    setError('Đăng nhập Google thất bại. Vui lòng thử lại.')
   }
 
   return (
@@ -155,10 +153,27 @@ function Login() {
               <span className="text-secondary small">hoặc</span>
             </div>
 
-            <button type="button" onClick={handleGoogleLogin} className="btn btn-light w-100 fw-bold py-2 d-flex justify-content-center align-items-center gap-2 mb-4">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" width="20" height="20" />
-              Đăng nhập bằng Google
-            </button>
+            {googleClientId ? (
+              <div className="mb-4">
+                <div className={`d-flex justify-content-center ${(loading || googleLoading) ? 'opacity-50 pe-none' : ''}`}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleLoginSuccess}
+                    onError={handleGoogleLoginError}
+                    text="signin_with"
+                    theme="outline"
+                    shape="rectangular"
+                    locale="vi"
+                  />
+                </div>
+                {googleLoading && (
+                  <p className="text-secondary small text-center mt-2 mb-0">Đang xác thực Google...</p>
+                )}
+              </div>
+            ) : (
+              <div className="alert alert-warning py-2 px-3 small mb-4" role="alert">
+                Thiếu cấu hình VITE_GOOGLE_CLIENT_ID nên chưa thể đăng nhập bằng Google.
+              </div>
+            )}
 
             <p className="text-center text-secondary small mb-0">
               Chưa có tài khoản?{' '}
