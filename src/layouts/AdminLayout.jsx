@@ -6,6 +6,7 @@ const adminTabs = [
   { to: '/admin/dashboard', label: 'Tổng quan', icon: '📊' },
   { to: '/admin/profile', label: 'Hồ sơ', icon: '👤' },
   { to: '/admin/users', label: 'Quản lí khách hàng', icon: '👥' },
+  { to: '/admin/reviews', label: 'Quản lý Đánh giá', icon: '📝' },
   { to: '/admin/bookings', label: 'Quản lý Đặt Vé', icon: '🎟️' },
   { to: '/admin/movies', label: 'Quản lý Phim', icon: '🎬' },
   { to: '/admin/auditoriums', label: 'Phòng Chiếu', icon: '🏛️' },

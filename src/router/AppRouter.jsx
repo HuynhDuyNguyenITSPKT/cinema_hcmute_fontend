@@ -16,6 +16,7 @@ import AdminShowtimes from '../pages/AdminShowtimes'
 import AdminSeatTypes from '../pages/AdminSeatTypes'
 import AdminBookings from '../pages/AdminBookings'
 import AdminDashboard from '../pages/AdminDashboard'
+import AdminReviews from '../pages/AdminReviews'
 // Auth Pages
 import Login from '../pages/Login'
 import Register from '../pages/Register'
@@ -101,6 +102,7 @@ function AppRouter() {
         <Route path="showtimes" element={<AdminShowtimes />} />
         <Route path="seat-types" element={<AdminSeatTypes />} />
         <Route path="bookings" element={<AdminBookings />} />
+        <Route path="reviews" element={<AdminReviews />} />
       </Route>
 
       {/* User routes */}
