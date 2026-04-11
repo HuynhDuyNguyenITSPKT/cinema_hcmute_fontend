@@ -1,4 +1,4 @@
-Link : FE : [https://cinema-hcmute-fontend.vercel.app/](https://cinema-ticket-hcmute-fontend.vercel.app/)
+Link : FE : https://www.ticket-movie-nhom09.duckdns.org
 
 hostname: nhom09-movieute-pro.mysql.database.azure.com
 port : 3306
