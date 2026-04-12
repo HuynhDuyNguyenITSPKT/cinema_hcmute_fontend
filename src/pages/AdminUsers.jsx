@@ -263,11 +263,11 @@ function AdminUsers() {
               <thead className="table-light">
                 <tr>
                   <th>ID</th>
-                  <th>Username</th>
+                  <th>Tên đăng nhập</th>
                   <th>Họ tên</th>
-                  <th>Email</th>
+                  <th>Địa chỉ email</th>
                   <th>Số điện thoại</th>
-                  <th>Role</th>
+                  <th>Vai trò</th>
                   <th>Trạng thái</th>
                   <th className="text-end">Thao tác</th>
                 </tr>

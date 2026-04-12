@@ -93,10 +93,10 @@ function AdminSeatTypes() {
       {loadError && <div className="alert alert-danger">{loadError}</div>}
 
       {loading ? <div className="text-center py-5"><div className="spinner-border text-danger" /></div> : (
-        <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover">
-            <thead><tr>
-              <th>Loại Ghế</th><th>Phụ Thu Giá (đ)</th><th>Đang Dùng</th><th>Hành Động</th>
+        <div className="table-responsive border rounded-3 bg-white">
+          <table className="table table-striped table-hover align-middle mb-0">
+            <thead className="table-light"><tr>
+              <th>Loại ghế</th><th>Phụ thu giá (đ)</th><th>Đang dùng</th><th>Hành động</th>
             </tr></thead>
             <tbody>
               {list.map(item => (
@@ -114,7 +114,7 @@ function AdminSeatTypes() {
                   </td>
                   <td className="text-secondary small">{item.usedSeatCount ?? 0} ghế</td>
                   <td>
-                    <button className="btn btn-sm btn-outline-light me-2" onClick={() => openEdit(item)}>Sửa</button>
+                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => openEdit(item)}>Sửa</button>
                     <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(item)} disabled={!item.deletable}>
                       Xóa
                     </button>

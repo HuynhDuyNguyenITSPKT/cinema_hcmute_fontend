@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AppFooter from '../components/layout/AppFooter';
 
@@ -32,13 +32,16 @@ function PublicLayout({ children }) {
           <div className="collapse navbar-collapse" id="navbarPublic">
             <ul className="navbar-nav me-auto mb-2 mb-lg-0 fw-medium">
               <li className="nav-item">
-                <Link className="nav-link active" to="/">Trang Chủ</Link>
+                <NavLink end className={({ isActive }) => isActive ? 'nav-link active fw-semibold text-white' : 'nav-link'} to="/">Trang Chủ</NavLink>
               </li>
               <li className="nav-item">
-                <Link className="nav-link" to="/movies">Lịch Chiếu</Link>
+                <NavLink className={({ isActive }) => isActive ? 'nav-link active fw-semibold text-white' : 'nav-link'} to="/movies">Lịch Chiếu</NavLink>
               </li>
               <li className="nav-item">
-                <Link className="nav-link" to="/">Khuyến Mãi</Link>
+                <NavLink className={({ isActive }) => isActive ? 'nav-link active fw-semibold text-white' : 'nav-link'} to="/extra-services">Dịch Vụ</NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink className={({ isActive }) => isActive ? 'nav-link active fw-semibold text-white' : 'nav-link'} to="/promotions">Khuyến Mãi</NavLink>
               </li>
             </ul>
             

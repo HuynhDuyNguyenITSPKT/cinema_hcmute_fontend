@@ -289,12 +289,12 @@ function AdminExtraServices() {
               <thead className="table-light">
                 <tr>
                   <th>ID</th>
-                  <th>Image</th>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>isActive</th>
-                  <th className="text-end">Action</th>
+                  <th>Hình ảnh</th>
+                  <th>Tên dịch vụ</th>
+                  <th>Danh mục</th>
+                  <th>Giá</th>
+                  <th>Đang áp dụng</th>
+                  <th className="text-end">Thao tác</th>
                 </tr>
               </thead>
               <tbody>

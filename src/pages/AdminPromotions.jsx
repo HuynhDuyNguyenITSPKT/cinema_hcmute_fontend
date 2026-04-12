@@ -412,16 +412,16 @@ function AdminPromotions() {
               <thead className="table-light">
                 <tr>
                   <th>ID</th>
-                  <th>Image</th>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>discountType</th>
-                  <th>discountValue</th>
-                  <th>quantity</th>
-                  <th>startDate</th>
-                  <th>endDate</th>
-                  <th>isActive</th>
-                  <th className="text-end">Action</th>
+                  <th>Hình ảnh</th>
+                  <th>Mã khuyến mãi</th>
+                  <th>Tên khuyến mãi</th>
+                  <th>Loại giảm giá</th>
+                  <th>Giá trị giảm</th>
+                  <th>Số lượng</th>
+                  <th>Ngày bắt đầu</th>
+                  <th>Ngày kết thúc</th>
+                  <th>Đang áp dụng</th>
+                  <th className="text-end">Thao tác</th>
                 </tr>
               </thead>
               <tbody>

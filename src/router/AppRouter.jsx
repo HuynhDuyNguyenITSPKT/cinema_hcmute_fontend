@@ -31,6 +31,8 @@ import SeatSelection from '../pages/SeatSelection'
 import Checkout from '../pages/Checkout'
 import MyTickets from '../pages/MyTickets'
 import MovieList from '../pages/MovieList'
+import ExtraServices from '../pages/ExtraServices'
+import Promotions from '../pages/Promotions'
 import AdminGenres from '../pages/AdminGenres'
 
 function AppRouter() {
@@ -48,6 +50,8 @@ function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/movies" element={<MovieList />} />
         <Route path="/movies/:id" element={<MovieDetails />} />
+        <Route path="/extra-services" element={<ExtraServices />} />
+        <Route path="/promotions" element={<Promotions />} />
         <Route path="/callpay" element={<PaymentCallback />} />
       </Route>
 

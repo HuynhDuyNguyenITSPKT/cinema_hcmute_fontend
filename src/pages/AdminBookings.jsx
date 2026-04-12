@@ -78,9 +78,9 @@ function AdminBookings() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <div>
+        <div className="text-center text-md-start">
           <h4 className="fw-bold mb-0">🎟️ Quản Lý Đặt Vé</h4>
-          <small className="text-secondary">Duyệt B2B, tạo ngoại lệ và theo dõi tất cả booking</small>
+          <small className="text-secondary d-block">Duyệt B2B, tạo ngoại lệ và theo dõi tất cả booking</small>
         </div>
         <button className="btn btn-danger" onClick={() => { setCreateForm({ showtimeId: '', seatIds: '', userId: '', manualTotalAmount: '', note: '' }); setError(''); setShowCreateModal(true) }}>
           + Tạo Booking Ngoại Lệ
@@ -103,11 +103,11 @@ function AdminBookings() {
             const si = STATUS_BADGE[b.status] || { label: b.status, cls: 'bg-secondary' }
             const isB2B = b.status === 'PENDING_APPROVAL'
             return (
-              <div key={b.id} className="card border-secondary" style={{ background: '#1e293b' }}>
+              <div key={b.id} className="card border-0 shadow-sm bg-white">
                 <div className="card-body">
-                  <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                      <strong className="text-light">{b.movieName || 'Phim chưa xác định'}</strong>
+                      <strong className="text-dark">{b.movieName || 'Phim chưa xác định'}</strong>
                       {isB2B && <span className="badge bg-info text-dark ms-2">🏢 B2B</span>}
                       {b.note?.includes('ADMIN OVERRIDE') && <span className="badge bg-purple ms-2" style={{ background: '#7c3aed' }}>🛡 Admin</span>}
                       <div className="text-secondary small mt-1">
@@ -124,7 +124,7 @@ function AdminBookings() {
                   {b.tickets?.length > 0 && (
                     <div className="d-flex flex-wrap gap-1 mb-2">
                       {b.tickets.map(t => (
-                        <span key={t.id} className="badge bg-dark border border-secondary text-secondary">{t.seatName}</span>
+                        <span key={t.id} className="badge text-bg-light border border-secondary text-dark">{t.seatName}</span>
                       ))}
                     </div>
                   )}
@@ -154,10 +154,10 @@ function AdminBookings() {
       {showCreateModal && (
         <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="modal-dialog">
-            <div className="modal-content bg-dark text-light border-secondary">
-              <div className="modal-header border-secondary">
-                <h5 className="modal-title">🛡️ Tạo Booking Ngoại Lệ (Admin)</h5>
-                <button className="btn-close btn-close-white" onClick={() => setShowCreateModal(false)} />
+            <div className="modal-content bg-white text-dark border-0 shadow">
+              <div className="modal-header border-bottom justify-content-center align-items-center position-relative">
+                <h5 className="modal-title text-center">🛡️ Tạo Booking Ngoại Lệ (Admin)</h5>
+                <button className="btn-close position-absolute end-0 me-3" onClick={() => setShowCreateModal(false)} />
               </div>
               <div className="modal-body">
                 {error && <div className="alert alert-danger">{error}</div>}
@@ -166,34 +166,34 @@ function AdminBookings() {
                 </div>
                 <div className="mb-3">
                   <label className="form-label">ID Suất Chiếu *</label>
-                  <input className="form-control bg-dark text-light border-secondary" placeholder="UUID của showtime"
+                  <input className="form-control" placeholder="UUID của showtime"
                     value={createForm.showtimeId} onChange={e => setCreateForm(p => ({ ...p, showtimeId: e.target.value }))} />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">ID Ghế * (phân cách dấu phẩy)</label>
-                  <textarea rows={3} className="form-control bg-dark text-light border-secondary"
+                  <textarea rows={3} className="form-control"
                     placeholder="uuid-seat-1, uuid-seat-2, ..."
                     value={createForm.seatIds} onChange={e => setCreateForm(p => ({ ...p, seatIds: e.target.value }))} />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">ID Khách Hàng *</label>
-                  <input className="form-control bg-dark text-light border-secondary"
+                  <input className="form-control"
                     value={createForm.userId} onChange={e => setCreateForm(p => ({ ...p, userId: e.target.value }))} />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Giá Thỏa Thuận (đ) — để trống = tính tự động</label>
-                  <input type="number" className="form-control bg-dark text-light border-secondary"
+                  <input type="number" className="form-control"
                     placeholder="Ví dụ: 5000000"
                     value={createForm.manualTotalAmount} onChange={e => setCreateForm(p => ({ ...p, manualTotalAmount: e.target.value }))} />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Ghi Chú</label>
-                  <input className="form-control bg-dark text-light border-secondary"
+                  <input className="form-control"
                     placeholder="Bao rạp, lễ kỷ niệm, ..."
                     value={createForm.note} onChange={e => setCreateForm(p => ({ ...p, note: e.target.value }))} />
                 </div>
               </div>
-              <div className="modal-footer border-secondary">
+              <div className="modal-footer border-top">
                 <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Hủy</button>
                 <button className="btn btn-danger" onClick={handleAdminCreate}
                   disabled={saving || !createForm.showtimeId || !createForm.seatIds || !createForm.userId}>

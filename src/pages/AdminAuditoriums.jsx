@@ -412,10 +412,10 @@ function AdminAuditoriums() {
       </div>
 
       {loading ? <div className="text-center py-5"><div className="spinner-border text-danger" /></div> : (
-        <div className="table-responsive">
-          <table className="table table-dark table-striped table-hover">
-            <thead><tr>
-              <th>Tên Phòng</th><th>Trạng Thái</th><th>Số Ghế</th><th>Lưới</th><th>Hành Động</th>
+        <div className="table-responsive border rounded-3 bg-white">
+          <table className="table table-striped table-hover align-middle mb-0">
+            <thead className="table-light"><tr>
+              <th>Tên phòng</th><th>Trạng thái</th><th>Số ghế</th><th>Lưới</th><th>Hành động</th>
             </tr></thead>
             <tbody>
               {list.map(item => (
@@ -429,7 +429,7 @@ function AdminAuditoriums() {
                   <td><span className="text-warning fw-bold">{item.totalSeats}</span></td>
                   <td><small className="text-secondary">{item.totalRows} × {item.totalColumns}</small></td>
                   <td>
-                    <button className="btn btn-sm btn-outline-light me-2" onClick={() => openEdit(item)}>Sửa</button>
+                    <button className="btn btn-sm btn-outline-primary me-2" onClick={() => openEdit(item)}>Sửa</button>
                     <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(item.id)}>Xóa</button>
                   </td>
                 </tr>
