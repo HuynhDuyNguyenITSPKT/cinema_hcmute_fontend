@@ -12,6 +12,17 @@ const extraServiceService = {
     })
   },
 
+  getPublicPageable: async ({ page = 0, size = 12, isActive = true, category } = {}) => {
+    return axiosClient.get('/extra-services', {
+      params: {
+        page,
+        size,
+        ...(typeof isActive === 'boolean' ? { isActive } : {}),
+        ...(category ? { category } : {}),
+      },
+    })
+  },
+
   getById: async (id) => {
     return axiosClient.get(`/extra-services/${id}`)
   },

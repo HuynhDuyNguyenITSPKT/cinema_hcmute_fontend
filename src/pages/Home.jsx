@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import publicService from '../services/publicService'
+import movieService from '../services/movieService'
 import { getGenreLabels } from '../utils/genreFactory'
 
 const PREVIEW_SIZE = 6
+const HOT_MOVIE_SIZE = 10
 
 const HOME_MOVIE_STATUS_OPTIONS = [
   { value: 'NOW_SHOWING', label: 'Phim đang chiếu' },
@@ -15,6 +17,59 @@ function truncateText(text, maxLength = 95) {
   if (!normalized) return 'Nội dung phim đang được cập nhật.'
   if (normalized.length <= maxLength) return normalized
   return `${normalized.slice(0, maxLength).trimEnd()}...`
+}
+
+function extractMovieItems(payload) {
+  const candidates = [
+    payload?.data?.currentItems,
+    payload?.data?.content,
+    payload?.data,
+    payload?.currentItems,
+    payload?.content,
+    payload,
+  ]
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate
+    }
+  }
+
+  return []
+}
+
+function normalizeHotMovieItems(items) {
+  if (!Array.isArray(items)) {
+    return []
+  }
+
+  return items
+    .map((item) => {
+      const averageRatingNumber = Number(item?.averageRating)
+      const totalCommentsNumber = Number(item?.totalComments)
+
+      return {
+        id: item?.id ?? item?.movieId ?? '',
+        title: item?.title ?? item?.movieTitle ?? 'Phim chưa có tên',
+        posterUrl: item?.posterUrl ?? '',
+        description: item?.description ?? '',
+        averageRating: Number.isFinite(averageRatingNumber) ? averageRatingNumber : null,
+        totalComments: Number.isFinite(totalCommentsNumber) ? totalCommentsNumber : 0,
+      }
+    })
+    .filter((item) => item.id || item.title)
+}
+
+function extractMovieDetail(payload) {
+  const candidates = [payload?.data, payload]
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return candidate
+    }
+  }
+
+  return null
 }
 
 function parseDateOnly(dateString) {
@@ -126,9 +181,12 @@ function toYoutubeAutoplayEmbedUrl(value, muted = true) {
 
 function Home() {
   const [movies, setMovies] = useState([])
+  const [hotMovies, setHotMovies] = useState([])
   const [movieStatusFilter, setMovieStatusFilter] = useState('NOW_SHOWING')
   const [loading, setLoading] = useState(false)
+  const [hotLoading, setHotLoading] = useState(false)
   const [error, setError] = useState('')
+  const [hotError, setHotError] = useState('')
   const [previewMovieId, setPreviewMovieId] = useState(null)
   const [audioPreviewMovieId, setAudioPreviewMovieId] = useState(null)
 
@@ -166,6 +224,72 @@ function Home() {
     }
   }, [movieStatusFilter])
 
+  useEffect(() => {
+    let active = true
+
+    const loadHotMovies = async () => {
+      setHotLoading(true)
+      setHotError('')
+
+      try {
+        const res = await publicService.getTopRatedMovies({ size: HOT_MOVIE_SIZE })
+        const items = extractMovieItems(res)
+        const rankedItems = normalizeHotMovieItems(items)
+
+        const detailResults = await Promise.allSettled(
+          rankedItems.map((item) => {
+            if (!item.id) {
+              return Promise.resolve(null)
+            }
+
+            return movieService.getMovieById(item.id)
+          })
+        )
+
+        const mergedItems = rankedItems.map((item, index) => {
+          const detailResult = detailResults[index]
+
+          if (!detailResult || detailResult.status !== 'fulfilled') {
+            return item
+          }
+
+          const detail = extractMovieDetail(detailResult.value)
+
+          if (!detail) {
+            return item
+          }
+
+          return {
+            ...item,
+            id: detail.id ?? detail.movieId ?? item.id,
+            title: detail.title ?? detail.movieTitle ?? item.title,
+            posterUrl: detail.posterUrl ?? item.posterUrl,
+            description: detail.description ?? item.description,
+          }
+        })
+
+        if (active) {
+          setHotMovies(mergedItems)
+        }
+      } catch (err) {
+        if (active) {
+          setHotError(err?.message || 'Không thể tải danh sách phim hot.')
+          setHotMovies([])
+        }
+      } finally {
+        if (active) {
+          setHotLoading(false)
+        }
+      }
+    }
+
+    loadHotMovies()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
     <div className="container mt-5">
       <div id="movieCarousel" className="carousel slide mb-5 shadow rounded overflow-hidden" data-bs-ride="carousel">
@@ -193,6 +317,75 @@ function Home() {
           <span className="carousel-control-next-icon" aria-hidden="true"></span>
         </button>
       </div>
+
+      <section className="mb-5">
+        <div className="text-center mb-4 border-bottom border-secondary pb-3">
+          <h2 className="fw-bold mb-2">🔥 Phim Hot</h2>
+          <p className="text-secondary fs-5 mb-0">Top {HOT_MOVIE_SIZE} phim được đánh giá cao</p>
+        </div>
+
+        {hotError ? <div className="alert alert-danger py-2 px-3">{hotError}</div> : null}
+
+        {hotLoading ? (
+          <div className="text-center text-secondary py-4">Đang tải danh sách phim hot...</div>
+        ) : null}
+
+        {!hotLoading && hotMovies.length === 0 && !hotError ? (
+          <div className="text-center text-secondary py-4">Chưa có dữ liệu phim hot.</div>
+        ) : null}
+
+        {!hotLoading && hotMovies.length > 0 ? (
+          <div className="d-flex gap-3 overflow-auto pb-2 justify-content-center">
+            {hotMovies.map((movie) => (
+              <article
+                key={movie.id || movie.title}
+                className="card bg-dark text-white border-secondary shadow-sm flex-shrink-0"
+                style={{ width: 220 }}
+              >
+                {movie.posterUrl ? (
+                  <img
+                    src={movie.posterUrl}
+                    className="card-img-top object-fit-cover"
+                    alt={movie.title || 'movie-hot'}
+                    style={{ height: 300 }}
+                  />
+                ) : (
+                  <div className="card-img-top bg-secondary d-flex align-items-center justify-content-center" style={{ height: 300 }}>
+                    <span className="text-light">Không có poster</span>
+                  </div>
+                )}
+
+                <div className="card-body d-flex flex-column">
+                  <h6 className="card-title text-truncate mb-2" title={movie.title}>{movie.title || 'Phim chưa có tên'}</h6>
+                  <div className="d-flex gap-2 flex-wrap mb-2">
+                    <span className="badge bg-warning text-dark">
+                      ⭐ {movie.averageRating !== null ? Number(movie.averageRating).toFixed(2) : '-'}
+                    </span>
+                    <span className="badge bg-secondary">
+                      {movie.totalComments} đánh giá
+                    </span>
+                  </div>
+                  <p className="small text-white-50 mb-3">
+                    {movie.description ? truncateText(movie.description, 70) : 'Phim đang nổi bật theo đánh giá người xem.'}
+                  </p>
+
+                  <div className="mt-auto d-grid gap-2">
+                    {movie.id ? (
+                      <Link to={`/movies/${movie.id}`} className="btn btn-outline-light btn-sm">
+                        Xem phim
+                      </Link>
+                    ) : (
+                      <button type="button" className="btn btn-outline-secondary btn-sm" disabled>
+                        Xem phim
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       <div className="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
 

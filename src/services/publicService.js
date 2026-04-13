@@ -12,6 +12,13 @@ const publicService = {
       },
     }),
 
+  getTopRatedMovies: ({ size = 10 } = {}) =>
+    axiosClient.get('/public/cinema/movies/top-rated', {
+      params: {
+        size,
+      },
+    }),
+
   getShowtimesByMovie: (movieId, date) =>
     axiosClient.get(`/public/cinema/movies/${movieId}/showtimes`, { params: { date } }),
 

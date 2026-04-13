@@ -6,6 +6,7 @@ import { getDefaultPathByRole } from '../utils/roleRoute'
 
 function Login() {
   const [formData, setFormData] = useState({ username: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -123,15 +124,25 @@ function Login() {
 
               <div className="mb-3">
                 <label htmlFor="password" className="form-label text-light small fw-medium">Mật khẩu</label>
-                <input
-                  id="password"
-                  type="password"
-                  className="form-control bg-black text-white border-secondary shadow-none"
-                  value={formData.password}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                  placeholder="Nhập mật khẩu"
-                  required
-                />
+                <div className="input-group">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control bg-black text-white border-secondary shadow-none"
+                    value={formData.password}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                    placeholder="Nhập mật khẩu"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showPassword ? 'Ẩn' : 'Hiện'}
+                  </button>
+                </div>
               </div>
 
               <div className="d-flex justify-content-between align-items-center mb-4 mt-2">
