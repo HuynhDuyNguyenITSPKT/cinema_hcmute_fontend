@@ -30,12 +30,35 @@ const bookingService = {
    */
   cancelBooking: (id) => axiosClient.post(`/bookings/${id}/cancel`),
 
+  /**
+   * POST /api/payment/user/payment-url?method=VNPAY|MOMO
+   * Dành cho User tạo URL thanh toán cho booking RESERVED (bao gồm B2B đã được Admin duyệt).
+   */
+  createPaymentUrl: (bookingId, amount, movieName, method) =>
+    axiosClient.post(`/payment/user/payment-url?method=${method}`, {
+      bookingId,
+      amount,
+      description: `Mua ve xem phim ${movieName || ''}`,
+    }),
+
   // ─── ADMIN ─────────────────────────────────────────────────────────────────
+
   getAllBookings: (status) =>
     axiosClient.get('/admin/bookings', { params: status ? { status } : {} }),
 
-  adminCreateBooking: (data) => axiosClient.post('/admin/bookings', data),
+  /**
+   * PUT /api/admin/bookings/{id}/update-seats
+   * Admin cập nhật ghế cuối cùng + duyệt đơn B2B.
+   * Hệ thống gọi lại GroupBookingBuilder để tính lại Pipeline giá (GroupDiscount 5% + VAT).
+   * @param {string} id - bookingId
+   * @param {{ showtimeId?: string, seatIds: string[], adminNote?: string }} data
+   */
+  updateGroupSeats: (id, data) => axiosClient.put(`/admin/bookings/${id}/update-seats`, data),
 
+  /**
+   * PUT /api/admin/bookings/{id}/approve
+   * Duyệt nhanh (không đổi ghế) — PENDING_APPROVAL → RESERVED
+   */
   approveBooking: (id) => axiosClient.put(`/admin/bookings/${id}/approve`),
 
   adminCancelBooking: (id) => axiosClient.put(`/admin/bookings/${id}/cancel`),

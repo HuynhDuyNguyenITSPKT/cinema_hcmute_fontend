@@ -32,6 +32,8 @@ import Checkout from '../pages/Checkout'
 import MyTickets from '../pages/MyTickets'
 import MovieList from '../pages/MovieList'
 import AdminGenres from '../pages/AdminGenres'
+import GroupBooking from '../pages/GroupBooking'
+import GroupSuccess from '../pages/GroupSuccess'
 
 function AppRouter() {
   return (
@@ -65,6 +67,22 @@ function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
             <Checkout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/group-booking"
+        element={
+          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
+            <GroupBooking />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/group-success"
+        element={
+          <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
+            <GroupSuccess />
           </ProtectedRoute>
         }
       />

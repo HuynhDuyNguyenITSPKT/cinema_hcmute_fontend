@@ -840,17 +840,6 @@ function MovieDetails() {
         </div>
       </div>
 
-      {/* B2B Notice */}
-      <div className="mt-4 d-flex align-items-center justify-content-between p-3 border border-warning rounded bg-dark">
-        <div className="text-light">
-          <strong>🏢 Đặt vé theo đoàn (Doanh nghiệp / Sự kiện)?</strong>
-          <div className="text-secondary small mt-1">Từ 20 người trở lên. Hưởng chiết khấu đặc biệt & hỗ trợ tư vấn riêng.</div>
-        </div>
-        <button className="btn btn-warning fw-bold"
-          onClick={() => navigate('/group-booking', { state: { movie } })}>
-          Đặt Vé Đoàn
-        </button>
-      </div>
     </div>
   )
 }

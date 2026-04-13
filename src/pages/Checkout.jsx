@@ -17,7 +17,6 @@ function Checkout() {
   const [loadingPrice, setLoadingPrice] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [availableExtras, setAvailableExtras] = useState([])
-  const [isGroupBooking] = useState(selectedIds.length >= 20)
   const [countdown, setCountdown] = useState(null)
   
   const countdownRef = useRef(null)
@@ -90,11 +89,11 @@ function Checkout() {
       showtimeId,
       seatIds: selectedIds,
       extras: extrasMap,
-      promotionCode: isGroupBooking ? null : (promoCode || null),
+      promotionCode: promoCode || null,
       paymentMethod,
-      bookingType: isGroupBooking ? 'GROUP' : 'STANDARD',
+      bookingType: 'STANDARD',
     })
-  }, [showtimeId, selectedIds, extras, promoCode, isGroupBooking, paymentMethod, doCalculatePrice])
+  }, [showtimeId, selectedIds, extras, promoCode, paymentMethod, doCalculatePrice])
 
   useEffect(() => {
     const timer = setTimeout(calculatePrice, 600)
@@ -120,16 +119,14 @@ function Checkout() {
         showtimeId,
         seatIds: selectedIds,
         extras: extrasMap,
-        promotionCode: isGroupBooking ? null : (promoCode || null),
+        promotionCode: promoCode || null,
         paymentMethod,
-        bookingType: isGroupBooking ? 'GROUP' : 'STANDARD',
-        note: isGroupBooking ? 'Đặt vé đoàn' : null,
+        bookingType: 'STANDARD',
+        note: null,
       })
 
       const data = res.data || res
-      if (isGroupBooking) {
-        navigate('/group-success', { state: { booking: data } })
-      } else if (data.paymentUrl) {
+      if (data.paymentUrl) {
         window.location.href = data.paymentUrl
       } else {
         navigate('/user/tickets')
@@ -212,29 +209,21 @@ function Checkout() {
             )}
 
             {/* Promo Code */}
-            {!isGroupBooking && (
-              <div className="card bg-dark border-secondary mb-3 shadow">
-                <div className="card-header border-secondary text-light fw-bold">🏷️ Mã Khuyến Mãi</div>
-                <div className="card-body">
-                  <div className="input-group">
-                    <input type="text" className={`form-control bg-dark text-light border-secondary ${promoError ? 'border-danger' : ''}`}
-                      placeholder="Nhập mã voucher (vd: GIA1S2...)"
-                      value={promoCode}
-                      onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError('') }} />
-                  </div>
-                  {promoError && <div className="text-danger small mt-2 fw-semibold">⚠️ {promoError}</div>}
-                  {pricePreview?.promotionDescription && !promoError && (
-                    <div className="text-success small mt-2 fw-semibold">✅ Áp dụng thành công: {pricePreview.promotionDescription}</div>
-                  )}
+            <div className="card bg-dark border-secondary mb-3 shadow">
+              <div className="card-header border-secondary text-light fw-bold">🏷️ Mã Khuyến Mãi</div>
+              <div className="card-body">
+                <div className="input-group">
+                  <input type="text" className={`form-control bg-dark text-light border-secondary ${promoError ? 'border-danger' : ''}`}
+                    placeholder="Nhập mã voucher (vd: GIA1S2...)"
+                    value={promoCode}
+                    onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError('') }} />
                 </div>
+                {promoError && <div className="text-danger small mt-2 fw-semibold">⚠️ {promoError}</div>}
+                {pricePreview?.promotionDescription && !promoError && (
+                  <div className="text-success small mt-2 fw-semibold">✅ Áp dụng thành công: {pricePreview.promotionDescription}</div>
+                )}
               </div>
-            )}
-
-            {isGroupBooking && (
-              <div className="alert alert-warning shadow">
-                🏢 <strong>Đặt vé Đoàn:</strong> Mã voucher cá nhân không áp dụng. Hệ thống đã tự chiết khấu ưu đãi B2B ở Đơn hàng.
-              </div>
-            )}
+            </div>
 
             {/* Payment Method */}
             <div className="card bg-dark border-secondary shadow">
@@ -280,12 +269,6 @@ function Checkout() {
                         <span>-{fmt(pricePreview.promotionDiscount)}</span>
                       </div>
                     )}
-                    {Number(pricePreview.groupDiscount) > 0 && (
-                      <div className="d-flex justify-content-between text-success py-2 fw-semibold">
-                        <span>Chiết Khấu B2B</span>
-                        <span>-{fmt(pricePreview.groupDiscount)}</span>
-                      </div>
-                    )}
                     {Number(pricePreview.taxAmount) > 0 && (
                       <div className="d-flex justify-content-between text-secondary py-2 border-top border-secondary mt-2">
                         <span>Thuế VAT (10%)</span>
@@ -305,7 +288,7 @@ function Checkout() {
                 <button className="btn btn-danger w-100 mt-4 fw-bold py-3 fs-5 shadow"
                   disabled={submitting || loadingPrice || !pricePreview || countdown === 0}
                   onClick={handleSubmit}>
-                  {submitting ? '⏳ Đang xử lý...' : isGroupBooking ? '📋 Gửi Mẫu Đặt Đoàn' : `💳 Thanh Toán ${paymentMethod}`}
+                  {submitting ? '⏳ Đang xử lý...' : `💳 Thanh Toán ${paymentMethod}`}
                 </button>
               </div>
             </div>

@@ -35,6 +35,7 @@ function SeatSelection() {
   const [auditorium, setAuditorium] = useState(null) // {totalRows, totalColumns}
   const [seatTypes, setSeatTypes] = useState([])     // [{id, name, surcharge}]
   const [selectedIds, setSelectedIds] = useState([])
+  const [bookingMode, setBookingMode] = useState('STANDARD')
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(null)
   const countdownRef = useRef(null)
@@ -96,14 +97,14 @@ function SeatSelection() {
       : [...selectedIds, seat.id]
 
     if (!alreadySelected) {
-      if (newSelected.length > MAX_STANDARD_SEATS) {
+      if (bookingMode === 'STANDARD' && newSelected.length > MAX_STANDARD_SEATS) {
         if (!window.confirm(
-          `Bạn đang chọn ${newSelected.length} ghế (hơn ${MAX_STANDARD_SEATS} ghế).\n` +
-          `Nhấn "OK" để chuyển sang luồng Đặt Vé Đoàn B2B.`
+          `Bạn đang chọn ${newSelected.length} ghế (nhiều hơn giới hạn ${MAX_STANDARD_SEATS} ghế mua lẻ).\n\n` +
+          `Nhấn "OK" để chuyển sang chế độ Khách Đoàn B2B (Mở khóa không giới hạn số ghế được chọn, yêu cầu tối thiểu 20 ghế).`
         )) return
-        navigate('/group-booking', { state: { movie, showtime, seatIds: newSelected } })
-        return
+        setBookingMode('GROUP')
       }
+
       try {
         await seatService.lockSeats(showtimeId, [seat.id])
         setSelectedIds(newSelected)
@@ -116,6 +117,9 @@ function SeatSelection() {
       await seatService.unlockSeats(showtimeId, [seat.id]).catch(() => {})
       setSelectedIds(newSelected)
       if (newSelected.length === 0) setCountdown(null)
+      if (newSelected.length <= MAX_STANDARD_SEATS && bookingMode === 'GROUP') {
+        setBookingMode('STANDARD')
+      }
     }
   }
 
@@ -123,6 +127,16 @@ function SeatSelection() {
 
   const handleContinue = () => {
     if (selectedIds.length === 0) { alert('Vui lòng chọn ít nhất 1 ghế!'); return }
+
+    if (bookingMode === 'GROUP') {
+      if (selectedIds.length < 20) {
+        alert(`Khách Đoàn B2B yêu cầu tối thiểu 20 ghế. Bạn mới chọn ${selectedIds.length} ghế. Vui lòng chọn thêm ${20 - selectedIds.length} ghế nữa!`)
+        return
+      }
+      navigate('/group-booking', { state: { movie, showtime, seatIds: selectedIds } })
+      return
+    }
+
     const selectedSeatNames = seatMap.filter(s => selectedIds.includes(s.id)).map(s => s.name)
     const lockExpiresAt = Date.now() + countdown * 1000
     navigate('/checkout', { state: { showtimeId, selectedIds, selectedSeatNames, movie, showtime, lockExpiresAt } })
@@ -280,11 +294,17 @@ function SeatSelection() {
         <div className="container d-flex align-items-center justify-content-between">
           <div className="text-light">
             <strong>{selectedIds.length}</strong> ghế đã chọn
-            {selectedIds.length >= 9 && (
-              <span className="ms-2 badge bg-warning text-dark">
-                ℹ️ Từ 20 ghế: Chuyển luồng Đặt Đoàn
-              </span>
-            )}
+            {bookingMode === 'GROUP' ? (
+              selectedIds.length < 20 ? (
+                <span className="ms-3 badge bg-warning text-dark fs-6 rounded-pill shadow-sm">
+                  ⚡ Chọn thêm {20 - selectedIds.length} ghế nữa
+                </span>
+              ) : (
+                <span className="ms-3 badge fs-6 rounded-pill shadow-sm" style={{ background: '#7c3aed' }}>
+                  🏢 Đủ điều kiện Khách Đoàn B2B
+                </span>
+              )
+            ) : null}
           </div>
           <button className="btn btn-danger px-4" disabled={selectedIds.length === 0} onClick={handleContinue}>
             Tiếp Theo →
