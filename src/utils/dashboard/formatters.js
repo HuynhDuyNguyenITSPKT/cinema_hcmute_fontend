@@ -35,12 +35,11 @@ export function formatInteger(value) {
 
 export function normalizePercent(value) {
   const raw = toNumber(value)
-  const percent = raw <= 1 ? raw * 100 : raw
-  return Math.max(0, Math.min(100, percent))
+  return Math.max(0, Math.min(100, raw))
 }
 
 export function formatPercent(value) {
-  return `${normalizePercent(value).toFixed(0)}%`
+  return `${normalizePercent(value).toFixed(2)}%`
 }
 
 export function formatTrendLabel(period, fallbackIndex) {
