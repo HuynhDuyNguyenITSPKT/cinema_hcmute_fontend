@@ -22,7 +22,7 @@ function AdminSeatTypes() {
   const [loadError, setLoadError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editItem,  setEditItem]  = useState(null)
-  const [form,      setForm]      = useState({ name: '', surcharge: 0 })
+  const [form,      setForm]      = useState({ name: '', surchargeAmount: 0 })
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState('')
 
@@ -58,14 +58,14 @@ function AdminSeatTypes() {
 
   const openCreate = () => {
     setEditItem(null)
-    setForm({ name: '', surcharge: 0 })
+    setForm({ name: '', surchargeAmount: 0 })
     setError('')
     setShowModal(true)
   }
 
   const openEdit = (item) => {
     setEditItem(item)
-    setForm({ name: item.name, surcharge: item.surcharge || item.surchargeFee || 0 })
+    setForm({ name: item.name, surchargeAmount: item.surchargeAmount ?? item.surcharge ?? item.surchargeFee ?? 0 })
     setError('')
     setShowModal(true)
   }
@@ -196,7 +196,7 @@ function AdminSeatTypes() {
                         </span>
                       </td>
                       <td className="fw-semibold text-success">
-                        +{Number(item.surcharge || item.surchargeFee || 0).toLocaleString('vi-VN')}đ
+                        +{Number(item.surchargeAmount ?? item.surcharge ?? item.surchargeFee ?? 0).toLocaleString('vi-VN')}đ
                       </td>
                       <td>
                         <span className="badge text-bg-secondary">{item.usedSeatCount ?? 0} ghế</span>
@@ -263,8 +263,8 @@ function AdminSeatTypes() {
                   <label className="form-label fw-semibold">Giá Phụ Thu (đ)</label>
                   <input type="number" min={0} className="form-control"
                     placeholder="Ví dụ: 30000"
-                    value={form.surcharge}
-                    onChange={e => setForm(p => ({ ...p, surcharge: Number(e.target.value) }))} />
+                    value={form.surchargeAmount}
+                    onChange={e => setForm(p => ({ ...p, surchargeAmount: Number(e.target.value) }))} />
                   <div className="form-text">Số tiền cộng thêm vào giá vé cơ bản cho loại ghế này.</div>
                 </div>
               </div>

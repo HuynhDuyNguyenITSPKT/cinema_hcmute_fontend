@@ -636,7 +636,7 @@ function MovieDetails() {
                             Phòng: {st.auditoriumName ?? '-'}
                           </small>
                           <div className="mt-2 text-warning small fw-semibold">
-                            Từ {st.basePrice?.toLocaleString('vi-VN')}đ / ghế
+                            Từ {(st.baseTicketPrice ?? st.basePrice)?.toLocaleString('vi-VN')}đ / ghế
                           </div>
                         </div>
                       </div>

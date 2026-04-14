@@ -9,7 +9,7 @@ const CATEGORIES = ['FOOD', 'DRINK', 'COMBO', 'OTHER']
 const EMPTY_FORM = {
   name: '',
   imageUrl: '',
-  price: 0,
+  unitPrice: 0,
   description: '',
   category: '',
   isActive: true,
@@ -85,8 +85,8 @@ function AdminExtraServices() {
       errors.imageUrl = 'Image URL là bắt buộc.'
     }
 
-    if (Number(form.price) < 0) {
-      errors.price = 'Giá phải lớn hơn hoặc bằng 0.'
+    if (Number(form.unitPrice) < 0) {
+      errors.unitPrice = 'Giá phải lớn hơn hoặc bằng 0.'
     }
 
     if (!form.category) {
@@ -109,7 +109,7 @@ function AdminExtraServices() {
     const payload = {
       name: form.name.trim(),
       imageUrl: form.imageUrl.trim(),
-      price: Number(form.price),
+      unitPrice: Number(form.unitPrice),
       description: form.description?.trim() || undefined,
       category: form.category,
       isActive: Boolean(form.isActive),
@@ -205,7 +205,7 @@ function AdminExtraServices() {
       setForm({
         name: data.name || '',
         imageUrl: data.imageUrl || '',
-        price: Number(data.price) || 0,
+        unitPrice: Number(data.unitPrice ?? data.price) || 0,
         description: data.description || '',
         category: data.category || '',
         isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
@@ -324,7 +324,7 @@ function AdminExtraServices() {
                       </td>
                       <td className="fw-semibold">{item.name || '-'}</td>
                       <td><span className="badge text-bg-info">{item.category || '-'}</span></td>
-                      <td>{Number(item.price || 0).toLocaleString('vi-VN')} đ</td>
+                      <td>{Number(item.unitPrice ?? item.price ?? 0).toLocaleString('vi-VN')} đ</td>
                       <td>
                         <span className={`badge ${item.isActive ? 'text-bg-success' : 'text-bg-secondary'}`}>
                           {item.isActive ? 'true' : 'false'}
@@ -455,11 +455,11 @@ function AdminExtraServices() {
                   <input
                     type="number"
                     min="0"
-                    className={`form-control ${formErrors.price ? 'is-invalid' : ''}`}
-                    value={form.price}
-                    onChange={(event) => setForm((prev) => ({ ...prev, price: event.target.value }))}
+                    className={`form-control ${formErrors.unitPrice ? 'is-invalid' : ''}`}
+                    value={form.unitPrice}
+                    onChange={(event) => setForm((prev) => ({ ...prev, unitPrice: event.target.value }))}
                   />
-                  {formErrors.price ? <div className="invalid-feedback">{formErrors.price}</div> : null}
+                  {formErrors.unitPrice ? <div className="invalid-feedback">{formErrors.unitPrice}</div> : null}
                 </div>
 
                 <div className="col-12 col-md-6 d-flex align-items-end">
@@ -511,7 +511,7 @@ function AdminExtraServices() {
                   <div><strong>ID:</strong> {getEntityId(selectedDetail)}</div>
                   <div><strong>Name:</strong> {selectedDetail.name || '-'}</div>
                   <div><strong>Category:</strong> {selectedDetail.category || '-'}</div>
-                  <div><strong>Price:</strong> {Number(selectedDetail.price || 0).toLocaleString('vi-VN')} đ</div>
+                  <div><strong>Price:</strong> {Number(selectedDetail.unitPrice ?? selectedDetail.price ?? 0).toLocaleString('vi-VN')} đ</div>
                   <div><strong>isActive:</strong> {selectedDetail.isActive ? 'true' : 'false'}</div>
                   <div><strong>Description:</strong> {selectedDetail.description || '-'}</div>
                   {selectedDetail.imageUrl ? (

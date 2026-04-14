@@ -47,7 +47,7 @@ function MyTickets() {
     try {
       const res = await bookingService.createPaymentUrl(
         booking.id,
-        Math.round(Number(booking.totalAmount || 0)),
+        Math.round(Number(booking.grandTotalPrice ?? booking.totalAmount ?? 0)),
         booking.movieName,
         method
       )
@@ -105,7 +105,7 @@ function MyTickets() {
                       <span className={`badge ${statusInfo.badge} mb-1`}>{statusInfo.label}</span>
                       {isB2B && <span className="badge ms-1 mb-1" style={{ background: '#7c3aed' }}>🏢 B2B</span>}
                       <div className="text-warning fw-bold fs-6">
-                        {Number(booking.totalAmount || 0).toLocaleString('vi-VN')}đ
+                        {Number(booking.grandTotalPrice ?? booking.totalAmount ?? 0).toLocaleString('vi-VN')}đ
                       </div>
                     </div>
                   </div>
@@ -163,7 +163,7 @@ function MyTickets() {
                         style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)', color: '#fff', border: 'none' }}
                         onClick={() => handlePay(booking)}
                         disabled={isPending}>
-                        {isPending ? '⏳ Đang khởi tạo...' : `💳 Thanh Toán ${(payMethod[booking.id] || 'VNPAY')} — ${Number(booking.totalAmount || 0).toLocaleString('vi-VN')}đ`}
+                        {isPending ? '⏳ Đang khởi tạo...' : `💳 Thanh Toán ${(payMethod[booking.id] || 'VNPAY')} — ${Number(booking.grandTotalPrice ?? booking.totalAmount ?? 0).toLocaleString('vi-VN')}đ`}
                       </button>
                     </div>
                   )}

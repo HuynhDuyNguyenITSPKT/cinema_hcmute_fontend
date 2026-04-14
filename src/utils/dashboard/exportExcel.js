@@ -128,7 +128,7 @@ export async function exportDashboardExcel({
     { key: 'createdAt', header: 'Thời gian tạo' },
     { key: 'customerName', header: 'Khách hàng' },
     { key: 'customerEmail', header: 'Email' },
-    { key: 'totalAmount', header: 'Tổng tiền' },
+    { key: 'grandTotalPrice', header: 'Tổng tiền' },
     { key: 'status', header: 'Trạng thái' },
     { key: 'promotionCode', header: 'Mã khuyến mãi' },
     { key: 'extraServiceAmount', header: 'Tiền dịch vụ thêm' },

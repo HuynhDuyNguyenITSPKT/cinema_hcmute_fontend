@@ -181,7 +181,7 @@ function AdminBookings() {
     total:    bookings.length,
     pending:  bookings.filter(b => b.status === 'PENDING_APPROVAL').length,
     success:  bookings.filter(b => b.status === 'SUCCESS').length,
-    revenue:  bookings.filter(b => b.status === 'SUCCESS').reduce((s, b) => s + Number(b.totalAmount || 0), 0),
+    revenue:  bookings.filter(b => b.status === 'SUCCESS').reduce((s, b) => s + Number(b.grandTotalPrice ?? b.totalAmount ?? 0), 0),
     cancelled:bookings.filter(b => b.status === 'CANCELLED').length,
   }), [bookings])
 
@@ -371,7 +371,7 @@ function AdminBookings() {
                           )}
                         </td>
                         <td className="fw-semibold text-success">
-                          {Number(b.totalAmount || 0).toLocaleString('vi-VN')}đ
+                          {Number(b.grandTotalPrice ?? b.totalAmount ?? 0).toLocaleString('vi-VN')}đ
                         </td>
                         <td>
                           <span className={`badge ${si.cls}`}>{si.label}</span>

@@ -193,7 +193,7 @@ function ExtraServices() {
                     <span className="badge bg-info text-dark">{mapCategoryLabel(item.category)}</span>
                   </div>
 
-                  <p className="text-warning fw-semibold mb-2">{formatCurrency(item.price)}</p>
+                  <p className="text-warning fw-semibold mb-2">{formatCurrency(item.unitPrice ?? item.price)}</p>
                   <p className="card-text text-white small mb-3">{truncateText(item.description)}</p>
                 </div>
               </article>

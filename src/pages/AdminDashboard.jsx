@@ -223,7 +223,7 @@ function AdminDashboard() {
       bookingId: sale.bookingId,
       createdAt: sale.createdAt,
       customerName: sale.customerName,
-      totalAmount: sale.totalAmount,
+      grandTotalPrice: sale.grandTotalPrice ?? sale.totalAmount,
       status: 'SUCCESS',
     }))
   }

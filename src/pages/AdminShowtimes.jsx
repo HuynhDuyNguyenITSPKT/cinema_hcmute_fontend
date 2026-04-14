@@ -401,7 +401,7 @@ function AdminShowtimes() {
 
   const openEdit = (st) => {
     const strategy = detectStrategy(st.startTime)
-    const basePrice = Number(st.basePrice)
+    const basePrice = Number(st.baseTicketPrice ?? st.basePrice)
     const restoredStandardPrice = Number.isFinite(basePrice) && basePrice > 0
       ? Math.round(basePrice / strategy.multiplier)
       : ''
@@ -669,7 +669,7 @@ function AdminShowtimes() {
                                   </div>
 
                                   <div className="small mt-1 text-secondary">
-                                    {st.auditoriumName ?? '-'} • {formatPrice(st.basePrice)}
+                                    {st.auditoriumName ?? '-'} • {formatPrice(st.baseTicketPrice ?? st.basePrice)}
                                   </div>
 
                                   <div className="mt-2 d-flex gap-1">

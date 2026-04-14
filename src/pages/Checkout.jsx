@@ -104,7 +104,7 @@ function Checkout() {
     setExtras(prev => {
       const existing = prev.find(e => e.id === extra.id)
       if (existing) return prev.map(e => e.id === extra.id ? { ...e, qty } : e)
-      return [...prev, { id: extra.id, name: extra.name, price: extra.price, qty }]
+      return [...prev, { id: extra.id, name: extra.name, unitPrice: extra.unitPrice ?? extra.price ?? 0, qty }]
     })
   }
 
@@ -187,7 +187,7 @@ function Checkout() {
                     <div key={ex.id} className="d-flex align-items-center justify-content-between py-3 border-bottom border-secondary">
                       <div>
                         <div className="text-light fw-semibold">{ex.name}</div>
-                        <small className="text-warning">{fmt(ex.price)}</small>
+                        <small className="text-warning">{fmt(ex.unitPrice ?? ex.price)}</small>
                       </div>
                       <div className="d-flex align-items-center gap-2">
                         <button className="btn btn-outline-secondary btn-sm" onClick={() => {
