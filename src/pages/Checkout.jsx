@@ -21,6 +21,7 @@ function Checkout() {
   
   const countdownRef = useRef(null)
   const hasCreatedBookingRef = useRef(false)
+  const skippedStrictModeCleanupRef = useRef(false)
 
   const releaseSeatsSafely = useCallback(() => {
     if (hasCreatedBookingRef.current || !showtimeId || selectedIds.length === 0) {
@@ -39,6 +40,15 @@ function Checkout() {
 
     return () => {
       window.removeEventListener('pagehide', releaseLocksOnPageHide)
+
+      // React StrictMode (dev only) runs an extra mount->cleanup cycle.
+      // Skip that synthetic cleanup to avoid accidentally unlocking seats
+      // right after navigating from SeatSelection to Checkout.
+      if (import.meta.env.DEV && !skippedStrictModeCleanupRef.current) {
+        skippedStrictModeCleanupRef.current = true
+        return
+      }
+
       releaseSeatsSafely()
     }
   }, [showtimeId, selectedIds, releaseSeatsSafely])

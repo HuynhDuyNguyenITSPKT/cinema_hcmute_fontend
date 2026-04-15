@@ -57,13 +57,13 @@ function SeatSelection() {
       const seats = res.data || res || []
       setSeatMap(seats)
 
-      // Keep local selection consistent if seats become unavailable after live refresh.
+      // Keep local selection consistent with backend lock ownership truth.
       const seatById = new Map(seats.map((seat) => [seat.id, seat]))
       setSelectedIds((prev) => {
         const next = prev.filter((id) => {
           const seat = seatById.get(id)
           if (!seat) return false
-          return seat.status !== SEAT_STATUS.BOOKED && seat.status !== SEAT_STATUS.LOCKED
+          return seat.lockedByCurrentUser === true
         })
         if (next.length === 0 && prev.length > 0) {
           setCountdown(null)
