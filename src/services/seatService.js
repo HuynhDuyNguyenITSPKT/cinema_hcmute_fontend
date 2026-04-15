@@ -1,4 +1,10 @@
 import axiosClient from '../api/axiosClient'
+import { getAccessToken } from '../utils/tokenStorage'
+
+function normalizeSeatIds(seatIds) {
+  if (!Array.isArray(seatIds)) return []
+  return [...new Set(seatIds.filter(Boolean))]
+}
 
 const seatService = {
   /**
@@ -22,6 +28,34 @@ const seatService = {
    */
   unlockSeats: (showtimeId, seatIds) =>
     axiosClient.delete(`/showtimes/${showtimeId}/seats/unlock`, { data: { seatIds } }),
+
+  /**
+   * Best-effort unlock during pagehide/reload/close.
+   * Uses fetch keepalive to increase chance request reaches server before tab dies.
+   */
+  unlockSeatsOnExit: (showtimeId, seatIds) => {
+    const normalizedIds = normalizeSeatIds(seatIds)
+    if (!showtimeId || normalizedIds.length === 0 || typeof window === 'undefined') {
+      return
+    }
+
+    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, '')
+    const token = getAccessToken()
+    const headers = {
+      'Content-Type': 'application/json',
+    }
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    fetch(`${apiBase}/showtimes/${showtimeId}/seats/unlock-on-exit`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ seatIds: normalizedIds }),
+      keepalive: true,
+    }).catch(() => {})
+  },
 }
 
 export default seatService

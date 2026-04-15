@@ -20,6 +20,28 @@ function Checkout() {
   const [countdown, setCountdown] = useState(null)
   
   const countdownRef = useRef(null)
+  const hasCreatedBookingRef = useRef(false)
+
+  const releaseSeatsSafely = useCallback(() => {
+    if (hasCreatedBookingRef.current || !showtimeId || selectedIds.length === 0) {
+      return
+    }
+    seatService.unlockSeats(showtimeId, selectedIds).catch(() => {})
+  }, [showtimeId, selectedIds])
+
+  useEffect(() => {
+    const releaseLocksOnPageHide = () => {
+      if (hasCreatedBookingRef.current) return
+      seatService.unlockSeatsOnExit(showtimeId, selectedIds)
+    }
+
+    window.addEventListener('pagehide', releaseLocksOnPageHide)
+
+    return () => {
+      window.removeEventListener('pagehide', releaseLocksOnPageHide)
+      releaseSeatsSafely()
+    }
+  }, [showtimeId, selectedIds, releaseSeatsSafely])
 
   // Countdown timer logic
   useEffect(() => {
@@ -126,6 +148,7 @@ function Checkout() {
       })
 
       const data = res.data || res
+      hasCreatedBookingRef.current = true
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl
       } else {

@@ -7,6 +7,7 @@ import axiosClient from '../api/axiosClient'
 const SEAT_STATUS = { AVAILABLE: 'AVAILABLE', LOCKED: 'LOCKED', BOOKED: 'BOOKED', SELECTED: 'SELECTED' }
 
 const MAX_STANDARD_SEATS = 8
+const LIVE_REFRESH_MS = 1500
 
 const PALETTE = [
   { bg: '#1e293b', border: '#475569' }, // index 0 - Default/Gray
@@ -39,34 +40,102 @@ function SeatSelection() {
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(null)
   const countdownRef = useRef(null)
+  const selectedIdsRef = useRef([])
+  const shouldKeepLocksOnUnmountRef = useRef(false)
 
   const movie = state?.movie
   const showtime = state?.showtime
 
-  const loadSeatMap = useCallback(async () => {
-    setLoading(true)
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds
+  }, [selectedIds])
+
+  const refreshSeatMap = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true)
     try {
       const res = await seatService.getSeatMap(showtimeId)
       const seats = res.data || res || []
       setSeatMap(seats)
 
-      // Lấy thêm thông tin phòng chiếu (totalRows, totalColumns) nếu có showtime.auditoriumId
+      // Keep local selection consistent if seats become unavailable after live refresh.
+      const seatById = new Map(seats.map((seat) => [seat.id, seat]))
+      setSelectedIds((prev) => {
+        const next = prev.filter((id) => {
+          const seat = seatById.get(id)
+          if (!seat) return false
+          return seat.status !== SEAT_STATUS.BOOKED && seat.status !== SEAT_STATUS.LOCKED
+        })
+        if (next.length === 0 && prev.length > 0) {
+          setCountdown(null)
+        }
+        return next
+      })
+    } catch {
+      setSeatMap([])
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [showtimeId])
+
+  const loadStaticData = useCallback(async () => {
+    try {
       if (showtime?.auditoriumId) {
         const audiRes = await auditoriumService.getById(showtime.auditoriumId)
         setAuditorium(audiRes.data || audiRes)
       }
 
-      // Lấy danh sách seat-types để đồng bộ màu
       const typesRes = await axiosClient.get('/seat-types')
       setSeatTypes(typesRes.data || typesRes || [])
     } catch {
-      setSeatMap([])
-    } finally {
-      setLoading(false)
+      // Keep seat page usable even if optional metadata fails to load.
     }
-  }, [showtimeId, showtime])
+  }, [showtime])
 
-  useEffect(() => { loadSeatMap() }, [loadSeatMap])
+  useEffect(() => {
+    loadStaticData()
+    refreshSeatMap({ silent: false })
+  }, [loadStaticData, refreshSeatMap])
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSeatMap({ silent: true })
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSeatMap({ silent: true })
+      }
+    }
+
+    window.addEventListener('focus', tick)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    const intervalId = setInterval(tick, LIVE_REFRESH_MS)
+
+    return () => {
+      window.removeEventListener('focus', tick)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      clearInterval(intervalId)
+    }
+  }, [refreshSeatMap])
+
+  useEffect(() => {
+    const releaseLocksOnPageHide = () => {
+      if (shouldKeepLocksOnUnmountRef.current) return
+      seatService.unlockSeatsOnExit(showtimeId, selectedIdsRef.current)
+    }
+
+    window.addEventListener('pagehide', releaseLocksOnPageHide)
+
+    return () => {
+      window.removeEventListener('pagehide', releaseLocksOnPageHide)
+
+      if (!shouldKeepLocksOnUnmountRef.current && selectedIdsRef.current.length > 0) {
+        seatService.unlockSeats(showtimeId, selectedIdsRef.current).catch(() => {})
+      }
+    }
+  }, [showtimeId])
 
   // Countdown timer
   useEffect(() => {
@@ -81,7 +150,7 @@ function SeatSelection() {
     alert('Hết thời gian giữ ghế! Vui lòng chọn lại.')
     setSelectedIds([])
     setCountdown(null)
-    loadSeatMap()
+    refreshSeatMap({ silent: true })
   }
 
   const handleSeatClick = async (seat) => {
@@ -111,7 +180,7 @@ function SeatSelection() {
         if (countdown === null) setCountdown(600)
       } catch (err) {
         alert(err?.message || 'Ghế này vừa bị người khác chọn mất! Vui lòng thử ghế khác.')
-        loadSeatMap()
+        refreshSeatMap({ silent: true })
       }
     } else {
       await seatService.unlockSeats(showtimeId, [seat.id]).catch(() => {})
@@ -120,6 +189,7 @@ function SeatSelection() {
       if (newSelected.length <= MAX_STANDARD_SEATS && bookingMode === 'GROUP') {
         setBookingMode('STANDARD')
       }
+      refreshSeatMap({ silent: true })
     }
   }
 
@@ -128,9 +198,12 @@ function SeatSelection() {
   const handleContinue = () => {
     if (selectedIds.length === 0) { alert('Vui lòng chọn ít nhất 1 ghế!'); return }
 
+    shouldKeepLocksOnUnmountRef.current = true
+
     if (bookingMode === 'GROUP') {
       if (selectedIds.length < 20) {
         alert(`Khách Đoàn B2B yêu cầu tối thiểu 20 ghế. Bạn mới chọn ${selectedIds.length} ghế. Vui lòng chọn thêm ${20 - selectedIds.length} ghế nữa!`)
+        shouldKeepLocksOnUnmountRef.current = false
         return
       }
       navigate('/group-booking', { state: { movie, showtime, seatIds: selectedIds } })
