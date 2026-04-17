@@ -1,10 +1,5 @@
 Link : FE : https://www.ticket-movie-nhom09.duckdns.org
 
-hostname: nhom09-movieute-pro.mysql.database.azure.com
-port : 3306
-username : NHOM09MOVIE
-pass : nguyenhuynh@P
-
 # Cinema HCMUTE Frontend
 
 Frontend cho hệ thống đặt vé phim, xây bằng React + Vite + React Router + Axios + Bootstrap.
